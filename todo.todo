@@ -1,0 +1,19 @@
+Todo:
+  ☐ cache using decorate
+Archive:
+  ✔ 6 joints priority: isOutOfRange --> greedySearch @done(21-07-31 14:05) @project(Todo)
+  ✔ angleOffset() @done(21-07-31 14:05) @project(Todo)
+  ✔ scoreOfTwoRobot() @done(21-07-31 14:05) @project(Todo)
+  ✔ splitChromo(self, population, chromoIndex) --> splitChromo(self, chromos): @done(21-07-24 15:06) @project(Todo)
+  ✔ interpolation(self, population, chromoIndex, px, py, pz, orgPos) --> interpolation(self, chromos, px, py, pz, orgPos) @done(21-07-24 15:07) @project(Todo)
+  ✔ scoreOfTwoRobot(self, _interpolation, axisRange) --> scoreOfTwoRobot(self, chromos, axisRange) @done(21-07-24 15:07) @project(Todo)
+  ✔ ga_Problem: add chromos variable @done(21-07-24 15:10) @project(Todo)
+  ✔ using cache to store result of score @done(21-07-28 12:29) @project(Todo)
+  ✔ add joint_three2six(q, direct_array) function @done(21-07-20 15:53) @project(Todo)
+    IK --> 3joint angle --> 6joint angle
+  ✔ add class for all files @done(21-07-22 15:36) @project(Todo)
+  ✔ userIK(vv) --> userIK(vv, direct_array) @done(21-07-22 15:36) @project(Todo)
+  ✔ define direct_array @done(21-07-22 15:45) @project(Todo)
+  ✘ using list to stored numpy array instead of dict @cancelled(21-07-20 14:37) @project(Todo)
+  ✘ robotCalc_pygoes: userIK() @cancelled(21-07-20 14:37) @project(Todo)
+  ✘ robotCalc_pygoes: greedySearch() @cancelled(21-07-20 14:37) @project(Todo)

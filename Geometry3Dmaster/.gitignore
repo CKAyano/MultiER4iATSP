@@ -1,0 +1,8 @@
+__pycache__/
+doc/build/
+build/
+dist/
+*.pyc
+*.swp
+/.vscode/
+/Geometry3D.egg-info/
