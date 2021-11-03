@@ -3,47 +3,12 @@ import pygeos.creation as pgc
 import pygeos.set_operations as pgi
 import warnings
 from dataclasses import dataclass
-from robotInfo import Position
+from robotInfo import Position, Robot, Coord, Coord_all
 
 d_1 = 0
 a_2 = 260
 a_3 = 20
 d_4 = 290
-
-
-@dataclass
-class Coord:
-    xx: float
-    yy: float
-    zz: float
-
-    def coordToNp(self):
-        return np.array([self.xx, self.yy, self.zz])
-
-    def __add__(self, other):
-        if isinstance(other, Coord):
-            new_xx = self.xx + other.xx
-            new_yy = self.yy + other.yy
-            new_zz = self.zz + other.zz
-            return Coord(new_xx, new_yy, new_zz)
-        return NotImplemented
-
-    def __sub__(self, other):
-        if isinstance(other, Coord):
-            new_xx = self.xx - other.xx
-            new_yy = self.yy - other.yy
-            new_zz = self.zz - other.zz
-            return Coord(new_xx, new_yy, new_zz)
-        return NotImplemented
-
-
-@dataclass
-class Coord_all:
-    v1: Coord
-    v2: Coord
-    v3: Coord
-    v4: Coord
-    v5: Coord
 
 
 class RobotCalc_pygeos:
@@ -298,10 +263,10 @@ class RobotCalc_pygeos:
                     return True
         return False
 
-    def cvCollision(self, qa_best: np.ndarray, qb_best: np.ndarray):
+    def cvCollision(self, robot_a: Robot, robot_b: Robot):
 
         # % ------------------------- qa ------------------------- % #
-        point = self.generateLinkWidenPoint(qa_best)
+        point = self.generateLinkWidenPoint(robot_a)
 
         ring1 = pgc.linearrings([point[0], point[1], point[2], point[3]])
         ring2 = pgc.linearrings([point[0], point[1], point[5], point[4]])
@@ -334,8 +299,8 @@ class RobotCalc_pygeos:
         )
 
         # % ------------------------- qb ------------------------- % #
-        vb_all = self.userFK(qb_best)
-        vb_all = self.robot2world_v_all(vb_all)
+        vb_all = self.userFK(robot_b.joints_best)
+        vb_all = self.robot2world_v_all(vb_all, robot_b.position)
 
         gmSegB1 = pgc.linestrings(
             [
@@ -370,20 +335,26 @@ class RobotCalc_pygeos:
             else:
                 return True
 
-    def generateLinkWidenPoint(self, q_best: np.ndarray):
+    def generateLinkWidenPoint(self, robot: Robot):
         def calcNormalVec(v_f: Coord, v_e: Coord):
             v1_point = v_f.coordToNp()
             v2_point = v_e.coordToNp()
-            if q_best[0] < np.pi / 2 + 0.0001 and q_best[0] > np.pi / 2 - 0.0001:
+            if (
+                robot.joints_best[0] < np.pi / 2 + 0.0001
+                and robot.joints_best[0] > np.pi / 2 - 0.0001
+            ):
                 normed_normalVec_1 = np.array([1, 0, 0])
                 normed_normalVec_2 = np.array([0, 1, 0])
-            elif q_best[0] < -np.pi / 2 + 0.0001 and q_best[0] > -np.pi / 2 - 0.0001:
+            elif (
+                robot.joints_best[0] < -np.pi / 2 + 0.0001
+                and robot.joints_best[0] > -np.pi / 2 - 0.0001
+            ):
                 normed_normalVec_1 = np.array([1, 0, 0])
                 normed_normalVec_2 = np.array([0, -1, 0])
             else:
-                vector_1 = np.array([np.tan(q_best[0]), -1, 0])
+                vector_1 = np.array([np.tan(robot.joints_best[0]), -1, 0])
                 vector_2 = v2_point - v1_point
-                vector_3 = np.array([1, np.tan(q_best[0]), 0])
+                vector_3 = np.array([1, np.tan(robot.joints_best[0]), 0])
                 vecCross_1 = np.cross(vector_1, vector_2)
                 length_vec_1 = np.linalg.norm(vecCross_1)
                 normed_normalVec_1 = vecCross_1 / length_vec_1
@@ -392,7 +363,8 @@ class RobotCalc_pygeos:
                 normed_normalVec_2 = vecCross_2 / length_vec_2
             return v1_point, v2_point, normed_normalVec_1, normed_normalVec_2
 
-        v_all = self.userFK(q_best)
+        v_all = self.userFK(robot.joints_best)
+        v_all = self.robot2world_v_all(v_all, robot.position)
         v2_point, v4_point, normalVec_1, normalVec_2 = calcNormalVec(v_all.v2, v_all.v4)
         _, v5_point, normalVec_3, normalVec_4 = calcNormalVec(v_all.v4, v_all.v5)
         p1 = v2_point + (-normalVec_1 + normalVec_2) * self.linkWidth / 2

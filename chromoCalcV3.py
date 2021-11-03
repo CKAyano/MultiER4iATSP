@@ -10,11 +10,13 @@ class ChromoCalcV3:
     def __init__(self, config, points, step, num_slicing):
         self.points_range = config["points_range"]
         self.baseX_offset = sum(self.points_range[0])
+        self.baseY_offset = (self.points_range[1][1] - self.points_range[1][0]) / 2
         self.linkWidth = config["linkWidth"]
         self.orgPos = np.array(np.radians(config["originalPosture"]))
         self.axisRange = np.array(config["axisRange"])
         self.direct_array = np.array(config["direct_array"])
-        self.rc = RobotCalc_pygeos(self.baseX_offset, self.linkWidth)
+        self.rc = RobotCalc_pygeos(self.baseX_offset, self.baseY_offset, self.linkWidth)
+        self.points_count = points.shape[0]
         self.px = points[:, 0]
         self.py = points[:, 1]
         self.pz = points[:, 2]
@@ -24,27 +26,21 @@ class ChromoCalcV3:
         self.middle_x = self.baseX_offset / 2
         self.step = step
         self.num_slicing = num_slicing
-        self.robots = []
+        self.robot_count = config["robot_count"]
+        self.robots: list[Robot] = []
         position = [Position.LEFT, Position.RIGHT, Position.UP, Position.DOWN]
-        for i in range(config["robot_count"]):
-            self.robots = append(Robot(i + 1, position[i]))
+        for i in range(self.robot_count):
+            self.robots.append(Robot(i, position[i]))
 
     def adjChromo(self, chromosome, pop):
-        def needPreAdj(pointIndex: int, whichRobot: str):
+        def needPreAdj(robot: Robot):
+            pointIndex = robot.robot_path - 1
             vv_robot = Coord(
                 self.px[pointIndex], self.py[pointIndex], self.pz[pointIndex]
             )
-            try:
-                if whichRobot == "b":
-                    vv_robot = self.rc.robot2world(vv_robot)
-                elif whichRobot == "a":
-                    pass
-                else:
-                    raise RuntimeError("There's only 'a' or 'b' for 'whichRobot'")
-            except RuntimeError as e:
-                print(repr(e))
-                raise
+            vv_robot = self.rc.robot2world(vv_robot, robot.position)
             q_robot = self.rc.userIK(vv_robot, self.direct_array)
+
             isOutRange = []
             for i in range(q_robot.shape[0]):
                 isOutRange.append(self.rc.cvAxisRange(q_robot[i, :], self.axisRange))
@@ -52,61 +48,52 @@ class ChromoCalcV3:
                 return True
             return False
 
-        zeroGeneIndex = np.where(chromosome == 0)
-        zeroGeneIndex = zeroGeneIndex[0][0]
-        robotPath_a = chromosome[:(zeroGeneIndex)]
-        robotPath_b = chromosome[(zeroGeneIndex + 1) :]
-        pointIndex_a = robotPath_a - 1
-        pointIndex_b = robotPath_b - 1
-        robotPath_a_needMove = np.zeros(0, dtype=int)
-        robotPath_b_needMove = np.zeros(0, dtype=int)
-        for i in range(len(pointIndex_a)):
-            if needPreAdj(pointIndex_a[i], "a"):
-                robotPath_a_needMove = np.hstack((robotPath_a_needMove, i))
-        for i in range(len(pointIndex_b)):
-            if needPreAdj(pointIndex_b[i], "b"):
-                robotPath_b_needMove = np.hstack((robotPath_b_needMove, i))
-        robotPath_a_after = robotPath_a.copy()
-        robotPath_b_after = robotPath_b.copy()
-        robotPath_a_after = np.delete(robotPath_a_after, robotPath_a_needMove)
-        robotPath_b_after = np.delete(robotPath_b_after, robotPath_b_needMove)
-        robotPath_a_after = np.hstack(
-            (robotPath_a_after, robotPath_b[robotPath_b_needMove])
-        )
-        robotPath_b_after = np.hstack(
-            (robotPath_b_after, robotPath_a[robotPath_a_needMove])
-        )
-        pop.Phen[self.chromoIndex, :] = np.hstack(
-            (robotPath_a_after, 0, robotPath_b_after)
-        )
-        pop.Chrom[self.chromoIndex, :] = np.hstack(
-            (robotPath_a_after, 0, robotPath_b_after)
-        )
+        self.set_robotsPath(chromosome)
 
-    def splitChromo(self, chromosome):
+        for rb in range(self.robot_count):
+            robots_needMove = np.zeros(0, dtype=int)
+            for i in range(len(self.robots[rb])):
+                if needPreAdj(self.robots[rb]):
+                    robots_needMove = np.hstack((robots_needMove, i))
+            robotPath_after = self.robots[rb].robot_path.copy()
+            robotPath_after = np.delete(robotPath_after, robots_needMove)
+            robotPath_after = np.hstack(
+                (robotPath_after, self.robots[rb].robot_path[robots_needMove])
+            )
+            self.robots[rb].robot_path = robotPath_after
+
+        chromo = self.robots[0].robot_path
+        for i in range(self.robot_count - 1):
+            chromo = np.hstack((0 - i, chromo))
+        pop.Phen[self.chromoIndex, :] = chromo
+        pop.Chrom[self.chromoIndex, :] = chromo
+
+    def set_robotsPath(self, chromosome):
         if chromosome.ndim >= 2:
             chromosome = np.squeeze(chromosome)
         # chromosome = population[chromoIndex, :]  # [1, 2, 3, 4, 0, 5, 6]
-        zeroGeneIndex = np.where(chromosome == 0)  # index of 0 = 4
-        zeroGeneIndex = zeroGeneIndex[0][0]
-        robotPath_a = chromosome[:(zeroGeneIndex)]  # [1, 2, 3, 4]
-        robotPath_b = chromosome[(zeroGeneIndex + 1) :]  # [5, 6]
-        pointIndex_a = robotPath_a - 1  # [0, 1, 2, 3]
-        pointIndex_b = robotPath_b - 1  # [4, 5]
-        if len(pointIndex_a) > len(pointIndex_b):
-            appendArray = np.ones(len(pointIndex_a) - len(pointIndex_b)) * -1
-            pointIndex_b = np.hstack((pointIndex_b, appendArray))  # [4, 5, -1, -1]
-        elif len(pointIndex_b) > len(pointIndex_a):
-            appendArray = np.ones(len(pointIndex_b) - len(pointIndex_a)) * -1
-            pointIndex_a = np.hstack((pointIndex_a, appendArray))  # [0, 1, 2, 3]
+        robotPath_left = chromosome.copy()
 
-        appendArray = np.array([-1])
-        pointIndex_a = np.hstack((pointIndex_a, appendArray))
-        pointIndex_b = np.hstack((pointIndex_b, appendArray))
+        for i in range(self.robot_count - 1):
+            mask = np.isin(
+                robotPath_left,
+                [self.robots[rb].delimiter for rb in range(self.robot_count - 1)],
+            )
+            sep_index = np.where(mask)  # index of 0 = 4
+            _index = sep_index[0][0]
+            self.robots[i].robot_path = robotPath_left[:(_index)]  # [1, 2, 3, 4]
+            self.robots[i].point_index = self.robots[i].robot_path - 1
+            robotPath_left = robotPath_left[(_index + 1) :]  # [5, 6]
+        self.robots[-1].robot_path = robotPath_left
+        self.robots[-1].point_index = self.robots[-1].robot_path - 1
 
-        pointIndex_a = pointIndex_a.astype(int)  # [0, 1, 2, 3, -1]
-        pointIndex_b = pointIndex_b.astype(int)  # [4, 5, -1, -1, -1]
-        return [pointIndex_a, pointIndex_b, robotPath_a, robotPath_b]
+        max_len = max([len(self.robots[i]) for i in range(self.robot_count)])
+
+        for i in range(self.robot_count):
+            appendArray = np.ones(max_len - len(self.robots[i])) * -1
+            self.robots[i].point_index = np.hstack(
+                (self.robots[i].point_index, appendArray, -1)
+            )  # [4, 5, -1, -1]
 
     def intForOneSeq(self, numOfCheckPoint, q_1_best, q_2_best):
         if q_1_best.ndim == 1:
@@ -120,17 +107,8 @@ class ChromoCalcV3:
         int_q = np.delete(int_q, 0, axis=0)
         return int_q
 
-    def coor2OptiAngle(self, vv: Coord, q_1_best, whichRobot: str):
-        try:
-            if whichRobot == "b":
-                vv = self.rc.robot2world(vv)
-            elif whichRobot == "a":
-                pass
-            else:
-                raise RuntimeError("There's only 'a' or 'b' for 'whichRobot'")
-        except RuntimeError as e:
-            print(repr(e))
-            raise
+    def coor2OptiAngle(self, vv: Coord, q_1_best, robot: Robot):
+        vv = self.rc.robot2world(vv, robot.position)
         q_2 = self.rc.userIK(vv, self.direct_array)
         len_q = q_2.shape[0]
         idx_notOutRange = np.zeros((0))
@@ -155,153 +133,152 @@ class ChromoCalcV3:
             q_2_best = self.rc.greedySearch(q_1_best, q_2_output)
         return q_2_best
 
-    def angleOffset(self, loc_a, loc_b, qa_1_best, qb_1_best):
-        self.outRange = False
-        if loc_a == -1:
-            qa_2_best = self.orgPos
-        else:
-            vv_a = Coord(self.px[loc_a], self.py[loc_a], self.pz[loc_a])
-            qa_2_best = self.coor2OptiAngle(vv_a, qa_1_best, "a")
-            isQaNan = np.isnan(qa_2_best)
-            if np.any(isQaNan):
-                self.outRange = True
-                return
+    def angleOffset(self, loc, q_1_best):
+        q_2_best = []
+        angleOffset = []
+        for rb in range(self.robot_count):
+            if loc[rb] == -1:
+                q_2_best.append(self.orgPos)
+            else:
+                vv_a = Coord(self.px[loc[rb]], self.py[loc[rb]], self.pz[loc[rb]])
+                q_2_best.append(self.coor2OptiAngle(vv_a, q_1_best[rb], self.robots[rb]))
+                isQaNan = np.isnan(q_2_best[rb])
+                if np.any(isQaNan):
+                    return None
+            angleOffset.append(np.degrees(np.abs(q_2_best[rb] - q_1_best[rb])))
 
-        if loc_b == -1:
-            qb_2_best = self.orgPos
-        else:
-            vv_b = Coord(self.px[loc_b], self.py[loc_b], self.pz[loc_b])
-            qb_2_best = self.coor2OptiAngle(vv_b, qb_1_best, "b")
-            isQbNan = np.isnan(qb_2_best)
-            if np.any(isQbNan):
-                self.outRange = True
-                return
-        angleOffset_a = np.abs(qa_2_best - qa_1_best)
-        angleOffset_b = np.abs(qb_2_best - qb_1_best)
-        angleOffset_a = np.degrees(angleOffset_a)
-        angleOffset_b = np.degrees(angleOffset_b)
-        return [angleOffset_a, angleOffset_b, qa_2_best, qb_2_best]
+        return angleOffset, q_2_best
 
-    def genTwoRobotInt(self, qa_1_best, qb_1_best, loc_a, loc_b):
-        _angleOffset = self.angleOffset(loc_a, loc_b, qa_1_best, qb_1_best)
-        if self.outRange:
-            return
-        angOffset_a, angOffset_b = _angleOffset[0], _angleOffset[1]
-        qa_2_best, qb_2_best = _angleOffset[2], _angleOffset[3]
-        seqCheckNum_a = int(np.max(angOffset_a))
-        seqCheckNum_b = int(np.max(angOffset_b))
-        int_qa = self.intForOneSeq(seqCheckNum_a, qa_1_best, qa_2_best)
-        int_qb = self.intForOneSeq(seqCheckNum_b, qb_1_best, qb_2_best)
-        return [int_qa, int_qb, qa_2_best, qb_2_best, angOffset_a, angOffset_b]
+    def genRobotsInt(self, q_1_best, loc):
+        _angleOffset = self.angleOffset(loc, q_1_best)
+        if _angleOffset is None:
+            return None
+        angOffset, q_2_best = _angleOffset[0], _angleOffset[1]
+
+        int_q = []
+        for rb in range(self.robot_count):
+            seqCheckNum = int(np.max(angOffset[rb]))
+            int_q.append(self.intForOneSeq(seqCheckNum, q_1_best[rb], q_2_best[rb]))
+
+        return int_q, q_2_best, angOffset
 
     def interpolation(self, chromosome):
-        pointIndex = self.splitChromo(chromosome)
+        self.set_robotsPath(chromosome)
 
         isFirstLoop = True
         totalAngle = 0
         numOfJoints = self.orgPos.size
         totalInt_qa, totalInt_qb = np.zeros((0, numOfJoints)), np.zeros((0, numOfJoints))
-        for loc_a, loc_b in zip(pointIndex[0], pointIndex[1]):
+
+        len_pointIndex = len(self.robots[0].point_index)
+        totalInt_q = [np.zeros((0, numOfJoints))] * 4
+        for i in range(len_pointIndex):
             if isFirstLoop:
-                qa_1_best = self.orgPos
-                qb_1_best = self.orgPos
+                q_1_best = [self.orgPos] * self.robot_count
                 isFirstLoop = False
             else:
-                qa_1_best = qa_2_best
-                qb_1_best = qb_2_best
-            _genTwoRobotInt = self.genTwoRobotInt(qa_1_best, qb_1_best, loc_a, loc_b)
-            if self.outRange:
-                return pointIndex
-            int_qa, int_qb = _genTwoRobotInt[0], _genTwoRobotInt[1]
-            qa_2_best, qb_2_best = _genTwoRobotInt[2], _genTwoRobotInt[3]
-            angOffset_a, angOffset_b = _genTwoRobotInt[4], _genTwoRobotInt[5]
-            totalInt_qa = np.vstack((totalInt_qa, int_qa))
-            totalInt_qb = np.vstack((totalInt_qb, int_qb))
-            totalAngle = totalAngle + angOffset_a + angOffset_b  # 兩隻手臂相加
+                q_1_best = q_2_best
 
-        totalInt_qa = np.delete(
-            totalInt_qa, np.where(np.all(totalInt_qa == self.orgPos, axis=1)), axis=0
-        )
-        totalInt_qb = np.delete(
-            totalInt_qb, np.where(np.all(totalInt_qb == self.orgPos, axis=1)), axis=0
-        )
-        numsOfIntPoint_a = np.shape(totalInt_qa)[0]
-        numsOfIntPoint_b = np.shape(totalInt_qb)[0]
-        if numsOfIntPoint_a > numsOfIntPoint_b:
-            totalInt_qa = totalInt_qa[0:numsOfIntPoint_b, :]
-        if numsOfIntPoint_b > numsOfIntPoint_a:
-            totalInt_qb = totalInt_qb[0:numsOfIntPoint_a, :]
-        return [totalInt_qa, totalInt_qb, totalAngle, pointIndex]
+            loc = [self.robots[rb].point_index[i] for rb in range(self.robot_count)]
+            _genTwoRobotInt = self.genRobotsInt(q_1_best, loc)
+            if _genTwoRobotInt is None:
+                return None
+            int_q, q_2_best, angOffset = _genTwoRobotInt
+            for rb in range(self.robot_count):
+                totalInt_q[rb] = np.vstack((totalInt_q[rb], int_q[rb]))
+            totalAngle = totalAngle + sum(angOffset)  # 兩隻手臂相加
 
-    def slicingCheckPoint(self, totalInt_qa, totalInt_qb, levelOfSlicing, preInd):
+        for rb in range(self.robot_count):
+            totalInt_q[rb] = np.delete(
+                totalInt_q[rb],
+                np.where(
+                    np.all(
+                        totalInt_q[rb] < self.orgPos + 0.000001
+                        and totalInt_q[rb] > self.orgPos + 0.000001,
+                        axis=1,
+                    )
+                ),
+                axis=0,
+            )
+
+        int_count = [np.shape(totalInt_q[rb])[0] for rb in range(self.robot_count)]
+        min_int_count = min(int_count)
+        for rb in range(self.robot_count):
+            totalInt_q[rb] = totalInt_q[rb][0:min_int_count, :]
+        return totalInt_q, totalAngle
+
+    def slicingCheckPoint(self, totalInt_q, levelOfSlicing, preInd):
         self.allOneSide = False
-        numOfSlicing = 0
-        numOfInt = totalInt_qa.shape[0]
-        if numOfInt == 0:
+        slicing_count = 0
+        int_count = totalInt_q[0].shape[0]
+        if int_count == 0:
             self.allOneSide = True
-            return
+            return None
         for i in range(levelOfSlicing):
-            numOfSlicing = numOfSlicing + np.power(2, i)
-        spacing = numOfInt // (numOfSlicing + 1)
-        slicingInd = np.arange(0, numOfInt, spacing)
-        lastEleFlag = numOfInt % (numOfSlicing + 1)
+            slicing_count = slicing_count + np.power(2, i)
+        spacing = int_count // (slicing_count + 1)
+        slicingInd = np.arange(0, int_count, spacing)
+        lastEleFlag = int_count % (slicing_count + 1)
         if lastEleFlag == 0 and levelOfSlicing == 1:
-            slicingInd = np.hstack((slicingInd, numOfInt - 1))
+            slicingInd = np.hstack((slicingInd, int_count - 1))
         checkSlicing = slicingInd.copy()
         for i in preInd:
             slicingInd = np.delete(slicingInd, np.where(slicingInd == i))
-        if np.all(checkSlicing == np.arange(numOfInt)):
+        for rb in range(self.robot_count):
+            totalInt_q[rb] = totalInt_q[rb][slicingInd, :]
+        if np.all(checkSlicing == np.arange(int_count)):
             return (
-                totalInt_qa[slicingInd, :],
-                totalInt_qb[slicingInd, :],
+                totalInt_q,
                 True,
                 slicingInd,
             )
-        return totalInt_qa[slicingInd, :], totalInt_qb[slicingInd, :], False, slicingInd
+        return totalInt_q, False, slicingInd
 
     def intOfStep(self, chromosome):
         _interpolation = self.interpolation(chromosome)
-        if self.outRange:
-            return _interpolation
-        [totalInt_qa, totalInt_qb, totalAngle, pointIndex] = _interpolation
-        num_int = totalInt_qa.shape[0]
-        len_path = np.min([len(pointIndex[2]), len(pointIndex[3])])
+        if _interpolation is None:
+            return None
+        totalInt_q, totalAngle = _interpolation
+        int_count = totalInt_q[0].shape[0]
+        len_path = np.min([len(self.robots[rb]) for rb in range(self.robot_count)])
         if self.step + 1 == self.num_slicing:
             return _interpolation
-        split_num = num_int // len_path // (self.step + 1)
+        split_num = int_count // len_path // (self.step + 1)
         if split_num == 0:
             split_num = 1
-        return [
-            totalInt_qa[::split_num, :],
-            totalInt_qb[::split_num, :],
-            totalAngle,
-            pointIndex,
+        for rb in range(self.robot_count):
+            totalInt_q[rb] = totalInt_q[rb][::split_num, :]
+        return totalInt_q, totalAngle
+
+    def isOutOfRange(self, totalInt_q):
+        isOutOfRange_q = [
+            self.rc.cvAxisRange(totalInt_q[rb], self.axisRange)
+            for rb in range(self.robot_count)
         ]
 
-    def isOutOfRange(self, totalInt_qa, totalInt_qb):
-        isOutOfRange_qa = self.rc.cvAxisRange(totalInt_qa, self.axisRange)
-        isOutOfRange_qb = self.rc.cvAxisRange(totalInt_qb, self.axisRange)
-        if isOutOfRange_qa or isOutOfRange_qb:
+        if any(isOutOfRange_q):
             return True
         return False
 
-    def isCollision(self, totalInt_qa, totalInt_qb):
-        numsOfIntPoint = np.shape(totalInt_qa)[0]
-        for i in range(numsOfIntPoint):
-            if self.rc.cvCollision(totalInt_qa[i, :], totalInt_qb[i, :]):
-                return True
+    def isCollision(self, totalInt_q):
+        int_count = np.shape(totalInt_q[0])[0]
+        for rb in range(0, self.robot_count):
+            for rb_next in range(rb + 1, self.robot_count):
+                for i in range(int_count):
+                    if self.rc.cvCollision(
+                        totalInt_q[rb][i, :], totalInt_q[rb_next][i, :]
+                    ):
+                        return True
         return False
 
     # @np_cache
     def scoreOfTwoRobot(self, chromosome, logging):
         # chromosome = np.array(hashable_chromosome)
         _interpolation = self.interpolation(chromosome)
-        if not self.outRange:
-            totalInt_qa, totalInt_qb = _interpolation[0], _interpolation[1]
-            totalAngle = np.max(_interpolation[2])
-            pointIndex = _interpolation[3]
+        if _interpolation is not None:
+            totalInt_q, totalAngle = _interpolation
 
-            if self.isOutOfRange(totalInt_qa, totalInt_qb):
+            if self.isOutOfRange(totalInt_q):
                 collisionScore = 90000000
                 msg = "Out of Range!"
                 print(msg)
@@ -314,7 +291,7 @@ class ChromoCalcV3:
                 while True:
                     levelOfSlicing = levelOfSlicing + 1
                     checkPoint = self.slicingCheckPoint(
-                        totalInt_qa, totalInt_qb, levelOfSlicing, preInd
+                        totalInt_q, levelOfSlicing, preInd
                     )
                     if self.allOneSide:
                         collisionScore = 0
@@ -350,7 +327,6 @@ class ChromoCalcV3:
                             logging.save_status(msg)
                             break
         else:
-            pointIndex = _interpolation
             totalAngle = 0
             collisionScore = 90000000
             msg = "Out of Range!"
@@ -358,24 +334,26 @@ class ChromoCalcV3:
             logging.save_status(msg)
 
         score_dist = totalAngle + collisionScore
-        score_unif = np.abs(len(pointIndex[2]) - len(pointIndex[3]))
+        points_eachRobot = self.points_count // self.robot_count
+        robots_path_len = [
+            len(self.robots[rb]) - points_eachRobot for rb in range(self.robot_count)
+        ]
+        score_unif = np.sum(np.abs(robots_path_len))
         return [score_dist, score_unif]
 
     def scoreOfTwoRobot_step(self, chromosome, logging):
         # chromosome = np.array(hashable_chromosome)
         _interpolation = self.intOfStep(chromosome)
-        if not self.outRange:
-            totalInt_qa, totalInt_qb = _interpolation[0], _interpolation[1]
-            totalAngle = np.max(_interpolation[2])
-            pointIndex = _interpolation[3]
+        if _interpolation is not None:
+            totalInt_q, totalAngle = _interpolation
 
-            if self.isOutOfRange(totalInt_qa, totalInt_qb):
+            if self.isOutOfRange(totalInt_q):
                 collisionScore = 90000000
                 msg = "Out of Range!"
                 print(msg)
                 logging.save_status(msg)
             else:
-                if self.isCollision(totalInt_qa, totalInt_qb):
+                if self.isCollision(totalInt_q):
                     collisionScore = 1000000
                     msg = "Collision!"
                     print(msg)
@@ -386,7 +364,6 @@ class ChromoCalcV3:
                     print(msg)
                     logging.save_status(msg)
         else:
-            pointIndex = _interpolation
             totalAngle = 0
             collisionScore = 90000000
             msg = "Out of Range!"
@@ -394,7 +371,11 @@ class ChromoCalcV3:
             logging.save_status(msg)
 
         score_dist = totalAngle + collisionScore
-        score_unif = np.abs(len(pointIndex[2]) - len(pointIndex[3]))
+        points_eachRobot = self.points_count // self.robot_count
+        robots_path_len = [
+            len(self.robots[rb]) - points_eachRobot for rb in range(self.robot_count)
+        ]
+        score_unif = np.sum(np.abs(robots_path_len))
         return [score_dist, score_unif]
 
 
