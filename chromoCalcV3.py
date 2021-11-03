@@ -1,5 +1,6 @@
 import numpy as np
 from numpy.lib.function_base import append
+from Geometry3Dmaster.Geometry3D.utils.solver import count
 from robotCalc_pygeos import RobotCalc_pygeos, Coord
 from robotInfo import Robot, Position
 
@@ -47,20 +48,56 @@ class ChromoCalcV3:
                 return True
             return False
 
+        def which_rb(position: Position):
+            which_rb = [
+                _rb
+                for _rb in range(self.robot_count)
+                if self.robots[_rb].position == position
+            ]
+            return which_rb[0]
+
+        def throw_path(
+            robotPath_after, robots_needMove, org_pos: Position, dist_Pos: Position
+        ):
+            org_rb = which_rb(org_pos)
+            dist_rb = which_rb(dist_Pos)
+            if self.robots[org_rb].position == org_pos:
+                robotPath_after[org_rb] = np.hstack(
+                    (
+                        robotPath_after[org_rb],
+                        self.robots[dist_rb].robot_path[robots_needMove[dist_rb]],
+                    )
+                )
+                robotPath_after[dist_rb] = np.hstack(
+                    (
+                        robotPath_after[dist_rb],
+                        self.robots[org_rb].robot_path[robots_needMove[org_rb]],
+                    )
+                )
+                self.robots[org_rb].robot_path = robotPath_after[org_rb]
+                self.robots[dist_rb].robot_path = robotPath_after[dist_rb]
+
         self.set_robotsPath(chromosome)
 
+        robotPath_after = []
+        robots_needMove = [np.zeros(0, dtype=int)] * self.robot_count
         for rb in range(self.robot_count):
-            robots_needMove = np.zeros(0, dtype=int)
+            # robots_needMove = np.zeros(0, dtype=int)
             for i in range(len(self.robots[rb])):
                 point_index = int(self.robots[rb].point_index[i])
                 if needPreAdj(point_index, self.robots[rb]):
-                    robots_needMove = np.hstack((robots_needMove, i))
-            robotPath_after = self.robots[rb].robot_path.copy()
-            robotPath_after = np.delete(robotPath_after, robots_needMove)
-            robotPath_after = np.hstack(
-                (robotPath_after, self.robots[rb].robot_path[robots_needMove])
-            )
-            self.robots[rb].robot_path = robotPath_after
+                    robots_needMove[rb] = np.hstack((robots_needMove[rb], i))
+            _robotPath_after = self.robots[rb].robot_path.copy()
+            _robotPath_after = np.delete(_robotPath_after, robots_needMove[rb])
+            # robots_needMove.append(_robots_needMove)
+            robotPath_after.append(_robotPath_after)
+
+        # for rb in range(self.robot_count):
+        #     robotPath_after[rb] = np.delete(robotPath_after, robots_needMove)
+        throw_path(robotPath_after, robots_needMove, Position.LEFT, Position.RIGHT)
+        # throw_path(robotPath_after, robots_needMove, Position.RIGHT, Position.LEFT)
+        throw_path(robotPath_after, robots_needMove, Position.UP, Position.DOWN)
+        # throw_path(robotPath_after, robots_needMove, Position.DOWN, Position.UP)
 
         chromo = self.robots[0].robot_path
         for i in range(self.robot_count - 1):
@@ -188,18 +225,15 @@ class ChromoCalcV3:
                 totalInt_q[rb] = np.vstack((totalInt_q[rb], int_q[rb]))
             totalAngle = totalAngle + sum(angOffset)  # 兩隻手臂相加
 
-        for rb in range(self.robot_count):
-            totalInt_q[rb] = np.delete(
-                totalInt_q[rb],
-                np.where(
-                    np.all(
-                        totalInt_q[rb] < self.orgPos + 0.000001
-                        and totalInt_q[rb] > self.orgPos + 0.000001,
-                        axis=1,
-                    )
-                ),
-                axis=0,
-            )
+        # for rb in range(self.robot_count):
+        #     totalInt_q[rb] = np.delete(
+        #         totalInt_q[rb],
+        #         np.where(
+        #             np.all(totalInt_q[rb] < self.orgPos + 0.000001, axis=1)
+        #             and np.all(totalInt_q[rb] > self.orgPos + 0.000001, axis=1)
+        #         ),
+        #         axis=0,
+        #     )
 
         int_count = [np.shape(totalInt_q[rb])[0] for rb in range(self.robot_count)]
         min_int_count = min(int_count)
@@ -266,7 +300,10 @@ class ChromoCalcV3:
             for rb_next in range(rb + 1, self.robot_count):
                 for i in range(int_count):
                     if self.rc.cvCollision(
-                        totalInt_q[rb][i, :], totalInt_q[rb_next][i, :]
+                        totalInt_q[rb][i, :],
+                        totalInt_q[rb_next][i, :],
+                        self.robots[rb],
+                        self.robots[rb_next],
                     ):
                         return True
         return False
@@ -276,7 +313,7 @@ class ChromoCalcV3:
         # chromosome = np.array(hashable_chromosome)
         _interpolation = self.interpolation(chromosome)
         if _interpolation is not None:
-            totalInt_q, totalAngle = _interpolation
+            totalInt_q, totalAngle = _interpolation[0], np.max(_interpolation[1])
 
             if self.isOutOfRange(totalInt_q):
                 collisionScore = 90000000
@@ -345,7 +382,7 @@ class ChromoCalcV3:
         # chromosome = np.array(hashable_chromosome)
         _interpolation = self.intOfStep(chromosome)
         if _interpolation is not None:
-            totalInt_q, totalAngle = _interpolation
+            totalInt_q, totalAngle = _interpolation[0], np.max(_interpolation[1])
 
             if self.isOutOfRange(totalInt_q):
                 collisionScore = 90000000

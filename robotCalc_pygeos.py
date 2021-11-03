@@ -263,10 +263,10 @@ class RobotCalc_pygeos:
                     return True
         return False
 
-    def cvCollision(self, robot_a: Robot, robot_b: Robot):
+    def cvCollision(self, q_a, q_b, robot_a: Robot, robot_b: Robot):
 
         # % ------------------------- qa ------------------------- % #
-        point = self.generateLinkWidenPoint(robot_a)
+        point = self.generateLinkWidenPoint(q_a, robot_a)
 
         ring1 = pgc.linearrings([point[0], point[1], point[2], point[3]])
         ring2 = pgc.linearrings([point[0], point[1], point[5], point[4]])
@@ -299,7 +299,7 @@ class RobotCalc_pygeos:
         )
 
         # % ------------------------- qb ------------------------- % #
-        vb_all = self.userFK(robot_b.joints_best)
+        vb_all = self.userFK(q_b)
         vb_all = self.robot2world_v_all(vb_all, robot_b.position)
 
         gmSegB1 = pgc.linestrings(
@@ -335,26 +335,20 @@ class RobotCalc_pygeos:
             else:
                 return True
 
-    def generateLinkWidenPoint(self, robot: Robot):
+    def generateLinkWidenPoint(self, q, robot: Robot):
         def calcNormalVec(v_f: Coord, v_e: Coord):
             v1_point = v_f.coordToNp()
             v2_point = v_e.coordToNp()
-            if (
-                robot.joints_best[0] < np.pi / 2 + 0.0001
-                and robot.joints_best[0] > np.pi / 2 - 0.0001
-            ):
+            if q[0] < np.pi / 2 + 0.0001 and q[0] > np.pi / 2 - 0.0001:
                 normed_normalVec_1 = np.array([1, 0, 0])
                 normed_normalVec_2 = np.array([0, 1, 0])
-            elif (
-                robot.joints_best[0] < -np.pi / 2 + 0.0001
-                and robot.joints_best[0] > -np.pi / 2 - 0.0001
-            ):
+            elif q[0] < -np.pi / 2 + 0.0001 and q[0] > -np.pi / 2 - 0.0001:
                 normed_normalVec_1 = np.array([1, 0, 0])
                 normed_normalVec_2 = np.array([0, -1, 0])
             else:
-                vector_1 = np.array([np.tan(robot.joints_best[0]), -1, 0])
+                vector_1 = np.array([np.tan(q[0]), -1, 0])
                 vector_2 = v2_point - v1_point
-                vector_3 = np.array([1, np.tan(robot.joints_best[0]), 0])
+                vector_3 = np.array([1, np.tan(q[0]), 0])
                 vecCross_1 = np.cross(vector_1, vector_2)
                 length_vec_1 = np.linalg.norm(vecCross_1)
                 normed_normalVec_1 = vecCross_1 / length_vec_1
@@ -363,7 +357,7 @@ class RobotCalc_pygeos:
                 normed_normalVec_2 = vecCross_2 / length_vec_2
             return v1_point, v2_point, normed_normalVec_1, normed_normalVec_2
 
-        v_all = self.userFK(robot.joints_best)
+        v_all = self.userFK(q)
         v_all = self.robot2world_v_all(v_all, robot.position)
         v2_point, v4_point, normalVec_1, normalVec_2 = calcNormalVec(v_all.v2, v_all.v4)
         _, v5_point, normalVec_3, normalVec_4 = calcNormalVec(v_all.v4, v_all.v5)
