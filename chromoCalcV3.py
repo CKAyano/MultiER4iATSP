@@ -33,8 +33,7 @@ class ChromoCalcV3:
             self.robots.append(Robot(i, position[i]))
 
     def adjChromo(self, chromosome, pop):
-        def needPreAdj(robot: Robot):
-            pointIndex = robot.robot_path - 1
+        def needPreAdj(pointIndex: int, robot: Robot):
             vv_robot = Coord(
                 self.px[pointIndex], self.py[pointIndex], self.pz[pointIndex]
             )
@@ -53,7 +52,8 @@ class ChromoCalcV3:
         for rb in range(self.robot_count):
             robots_needMove = np.zeros(0, dtype=int)
             for i in range(len(self.robots[rb])):
-                if needPreAdj(self.robots[rb]):
+                point_index = int(self.robots[rb].point_index[i])
+                if needPreAdj(point_index, self.robots[rb]):
                     robots_needMove = np.hstack((robots_needMove, i))
             robotPath_after = self.robots[rb].robot_path.copy()
             robotPath_after = np.delete(robotPath_after, robots_needMove)
@@ -64,7 +64,7 @@ class ChromoCalcV3:
 
         chromo = self.robots[0].robot_path
         for i in range(self.robot_count - 1):
-            chromo = np.hstack((0 - i, chromo))
+            chromo = np.hstack((chromo, 0 - i, self.robots[i + 1].robot_path))
         pop.Phen[self.chromoIndex, :] = chromo
         pop.Chrom[self.chromoIndex, :] = chromo
 
@@ -90,7 +90,7 @@ class ChromoCalcV3:
         max_len = max([len(self.robots[i]) for i in range(self.robot_count)])
 
         for i in range(self.robot_count):
-            appendArray = np.ones(max_len - len(self.robots[i])) * -1
+            appendArray = np.ones(max_len - len(self.robots[i]), dtype="int32") * -1
             self.robots[i].point_index = np.hstack(
                 (self.robots[i].point_index, appendArray, -1)
             )  # [4, 5, -1, -1]

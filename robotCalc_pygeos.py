@@ -220,7 +220,7 @@ class RobotCalc_pygeos:
     def robot2world(self, vv_a: Coord, position: Position):
         vv_b = Coord(0, 0, 0)
         if position == Position.LEFT:
-            pass
+            vv_b = vv_a
         elif position == Position.RIGHT:
             vv_b.xx = -vv_a.xx + self.baseX_offset
             vv_b.yy = -vv_a.yy
