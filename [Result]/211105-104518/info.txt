@@ -1,4 +1,5 @@
-start time:                              211103-172103
+start time:              211103-172103
+number of robots:        4
 points range:            [[150, 750], [-300, 300], [0, 0]]
 number of points:        50
 link width:              200
