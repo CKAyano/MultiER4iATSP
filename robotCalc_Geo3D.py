@@ -2,6 +2,7 @@ import numpy as np
 import Geometry3Dmaster.Geometry3D as gm
 import time
 import timeit
+
 # import Geometry3D as gm
 
 # d_1 = 330
@@ -230,12 +231,8 @@ def cvCollision(qa_best, qb_best, path):
     cpg10 = gm.geometry.ConvexPolygon((point10, point11, point15, point14))
     cpg11 = gm.geometry.ConvexPolygon((point9, point12, point16, point13))
     cpg12 = gm.geometry.ConvexPolygon((point13, point14, point15, point16))
-    cph1 = gm.geometry.ConvexPolyhedron(
-        (cpg1, cpg2, cpg3, cpg4, cpg5, cpg6)
-    )
-    cph2 = gm.geometry.ConvexPolyhedron(
-        (cpg7, cpg8, cpg9, cpg10, cpg11, cpg12)
-    )
+    cph1 = gm.geometry.ConvexPolyhedron((cpg1, cpg2, cpg3, cpg4, cpg5, cpg6))
+    cph2 = gm.geometry.ConvexPolyhedron((cpg7, cpg8, cpg9, cpg10, cpg11, cpg12))
 
     # % ------------------------- qb ------------------------- % #
     vb_all = userFK(qb_best)
@@ -291,8 +288,12 @@ def cvCollision(qa_best, qb_best, path):
             r.add((inter4, "g", 5), normal_length=0)
         r.savefigure(path)
 
-        if strInter1 == "None" and strInter2 == "None" \
-           and strInter3 == "None" and strInter4 == "None":
+        if (
+            strInter1 == "None"
+            and strInter2 == "None"
+            and strInter3 == "None"
+            and strInter4 == "None"
+        ):
             return False
         else:
             return True
@@ -302,10 +303,10 @@ def generateLinkWidenPoint_2(q_best):
     def calcNormalVec(v_all, v1, v2):
         v1_point = np.array(list(v_all.get(v1).values()))
         v2_point = np.array(list(v_all.get(v2).values()))
-        if q_best[0] < np.pi/2+0.0001 and q_best[0] > np.pi/2-0.0001:
+        if q_best[0] < np.pi / 2 + 0.0001 and q_best[0] > np.pi / 2 - 0.0001:
             normed_normalVec_1 = np.array([1, 0, 0])
             normed_normalVec_2 = np.array([0, 1, 0])
-        elif q_best[0] < -np.pi/2+0.0001 and q_best[0] > -np.pi/2-0.0001:
+        elif q_best[0] < -np.pi / 2 + 0.0001 and q_best[0] > -np.pi / 2 - 0.0001:
             normed_normalVec_1 = np.array([1, 0, 0])
             normed_normalVec_2 = np.array([0, -1, 0])
         else:
@@ -321,26 +322,27 @@ def generateLinkWidenPoint_2(q_best):
             normed_normalVec_2 = vecCross_2 / length_vec_2
             # np.seterr(all='warn')
         return v1_point, v2_point, normed_normalVec_1, normed_normalVec_2
-    v_all = userFK(q_best)
-    v2_point, v4_point, normalVec_1, normalVec_2 = calcNormalVec(v_all, 'v2', 'v4')
-    _, v5_point, normalVec_3, normalVec_4 = calcNormalVec(v_all, 'v4', 'v5')
-    p1 = v2_point + (-normalVec_1 + normalVec_2) * linkWidth/2
-    p2 = v2_point + (normalVec_1 + normalVec_2) * linkWidth/2
-    p3 = v2_point + (normalVec_1 - normalVec_2) * linkWidth/2
-    p4 = v2_point + (-normalVec_1 - normalVec_2) * linkWidth/2
-    p5 = v4_point + (-normalVec_1 + normalVec_2) * linkWidth/2
-    p6 = v4_point + (normalVec_1 + normalVec_2) * linkWidth/2
-    p7 = v4_point + (normalVec_1 - normalVec_2) * linkWidth/2
-    p8 = v4_point + (-normalVec_1 - normalVec_2) * linkWidth/2
 
-    p9 = v4_point + (-normalVec_3 + normalVec_4) * linkWidth/2
-    p10 = v4_point + (normalVec_3 + normalVec_4) * linkWidth/2
-    p11 = v4_point + (normalVec_3 - normalVec_4) * linkWidth/2
-    p12 = v4_point + (-normalVec_3 - normalVec_4) * linkWidth/2
-    p13 = v5_point + (-normalVec_3 + normalVec_4) * linkWidth/2
-    p14 = v5_point + (normalVec_3 + normalVec_4) * linkWidth/2
-    p15 = v5_point + (normalVec_3 - normalVec_4) * linkWidth/2
-    p16 = v5_point + (-normalVec_3 - normalVec_4) * linkWidth/2
+    v_all = userFK(q_best)
+    v2_point, v4_point, normalVec_1, normalVec_2 = calcNormalVec(v_all, "v2", "v4")
+    _, v5_point, normalVec_3, normalVec_4 = calcNormalVec(v_all, "v4", "v5")
+    p1 = v2_point + (-normalVec_1 + normalVec_2) * linkWidth / 2
+    p2 = v2_point + (normalVec_1 + normalVec_2) * linkWidth / 2
+    p3 = v2_point + (normalVec_1 - normalVec_2) * linkWidth / 2
+    p4 = v2_point + (-normalVec_1 - normalVec_2) * linkWidth / 2
+    p5 = v4_point + (-normalVec_1 + normalVec_2) * linkWidth / 2
+    p6 = v4_point + (normalVec_1 + normalVec_2) * linkWidth / 2
+    p7 = v4_point + (normalVec_1 - normalVec_2) * linkWidth / 2
+    p8 = v4_point + (-normalVec_1 - normalVec_2) * linkWidth / 2
+
+    p9 = v4_point + (-normalVec_3 + normalVec_4) * linkWidth / 2
+    p10 = v4_point + (normalVec_3 + normalVec_4) * linkWidth / 2
+    p11 = v4_point + (normalVec_3 - normalVec_4) * linkWidth / 2
+    p12 = v4_point + (-normalVec_3 - normalVec_4) * linkWidth / 2
+    p13 = v5_point + (-normalVec_3 + normalVec_4) * linkWidth / 2
+    p14 = v5_point + (normalVec_3 + normalVec_4) * linkWidth / 2
+    p15 = v5_point + (normalVec_3 - normalVec_4) * linkWidth / 2
+    p16 = v5_point + (-normalVec_3 - normalVec_4) * linkWidth / 2
     point = (p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16)
     return point
 

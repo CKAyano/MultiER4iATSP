@@ -223,22 +223,15 @@ class ChromoCalcV3:
             int_q, q_2_best, angOffset = _genTwoRobotInt
             for rb in range(self.robot_count):
                 totalInt_q[rb] = np.vstack((totalInt_q[rb], int_q[rb]))
-            totalAngle = totalAngle + sum(angOffset)  # 兩隻手臂相加
-
-        # for rb in range(self.robot_count):
-        #     totalInt_q[rb] = np.delete(
-        #         totalInt_q[rb],
-        #         np.where(
-        #             np.all(totalInt_q[rb] < self.orgPos + 0.000001, axis=1)
-        #             and np.all(totalInt_q[rb] > self.orgPos + 0.000001, axis=1)
-        #         ),
-        #         axis=0,
-        #     )
 
         int_count = [np.shape(totalInt_q[rb])[0] for rb in range(self.robot_count)]
         min_int_count = min(int_count)
+        max_int_count = max(int_count)
         for rb in range(self.robot_count):
-            totalInt_q[rb] = totalInt_q[rb][0:min_int_count, :]
+            need_append_count = max_int_count - int_count[rb]
+            org = self.orgPos.copy()[None, :]
+            org_need_append = np.repeat(org, need_append_count, axis=0)
+            totalInt_q[rb] = np.vstack((totalInt_q[rb], org_need_append))
         return totalInt_q, totalAngle
 
     def slicingCheckPoint(self, totalInt_q, levelOfSlicing, preInd):
@@ -284,7 +277,14 @@ class ChromoCalcV3:
             totalInt_q[rb] = totalInt_q[rb][::split_num, :]
         return totalInt_q, totalAngle
 
-    def isOutOfRange(self, totalInt_q):
+    def is_near_orgPos(self, q: np.ndarray) -> bool:
+        diff = np.abs(q - self.orgPos)
+        cond = diff <= 0.000001
+        if np.all(cond):
+            return True
+        return False
+
+    def isOutOfRange(self, totalInt_q) -> bool:
         isOutOfRange_q = [
             self.rc.cvAxisRange(totalInt_q[rb], self.axisRange)
             for rb in range(self.robot_count)
@@ -294,18 +294,21 @@ class ChromoCalcV3:
             return True
         return False
 
-    def isCollision(self, totalInt_q):
+    def isCollision(self, totalInt_q) -> bool:
         int_count = np.shape(totalInt_q[0])[0]
         for rb in range(0, self.robot_count):
             for rb_next in range(rb + 1, self.robot_count):
                 for i in range(int_count):
-                    if self.rc.cvCollision(
-                        totalInt_q[rb][i, :],
-                        totalInt_q[rb_next][i, :],
-                        self.robots[rb],
-                        self.robots[rb_next],
-                    ):
-                        return True
+                    if not self.is_near_orgPos(
+                        totalInt_q[rb][i, :]
+                    ) or not self.is_near_orgPos(totalInt_q[rb_next][i, :]):
+                        if self.rc.cvCollision(
+                            totalInt_q[rb][i, :],
+                            totalInt_q[rb_next][i, :],
+                            self.robots[rb],
+                            self.robots[rb_next],
+                        ):
+                            return True
         return False
 
     # @np_cache
