@@ -3,7 +3,7 @@ clear
 close all
 %% initial 隨機random 座標-------2
 coor = 50 ;
-points_range = [150, 600; -300, 300; 0, 0];
+points_range = [150, 750; -300, 300; 0, 0];
 
 px = random('unif',points_range(1, 1), sum(points_range(1, :))/2 ,coor/2,1);           %z4為X軸變化量
 py = random('unif',points_range(2, 1), points_range(2, 2),coor/2,1);        %z5為Y軸變化量

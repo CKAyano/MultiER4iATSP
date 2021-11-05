@@ -77,7 +77,7 @@ class moea_NSGA3_modified(ea.MoeaAlgorithm):
         )  # 初始化种群染色体矩阵，此时种群规模将调整为uniformPoint点集的大小，initChrom函数会把种群规模给重置
         if self.problem.step != 0:
             population.Chrom = np.genfromtxt(
-                f"./log/chrom_{self.problem.step-1}.csv", delimiter=","
+                f"./log/chrom_{self.problem.step-1}.csv", delimiter=",", dtype="int32"
             )
         self.call_aimFunc(population)  # 计算种群的目标函数值
         # 插入先验知识（注意：这里不会对先知种群prophetPop的合法性进行检查，故应确保prophetPop是一个种群类且拥有合法的Chrom、ObjV、Phen等属性）

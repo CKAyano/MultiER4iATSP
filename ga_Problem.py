@@ -39,9 +39,10 @@ class MyProblem(ea.Problem):  # 继承Problem父类
             self.isFirstImp = True
             file = open(f"./Result/info.txt", "w")
             file.write(
-                f'{"start time:":<25}\
-                {datetime.datetime.now().strftime("%y%m%d-%H%M%S")}\n'
+                f'{"start time:":<25}'
+                + f'{datetime.datetime.now().strftime("%y%m%d-%H%M%S")}\n'
             )
+            file.write(f'{"number of robot:":<25}{robot_count}\n')
             file.write(f'{"points range:":<25}{points_range}\n')
             file.write(f'{"number of points:":<25}{points_count}\n')
             file.write(f'{"link width:":<25}{linkWidth}\n')
