@@ -4,9 +4,16 @@ from ga_Problem import MyProblem
 import datetime
 import shutil
 import os
+import numpy as np
+import matplotlib.pyplot as plt
 
 
-if __name__ == "__main__":
+CONFIG_PATH = "./config.yml"
+GEN_LIST = [2000, 500, 100]
+NIND = 50
+
+
+def del_result_contents():
     folder = "./Result"
     for filename in os.listdir(folder):
         file_path = os.path.join(folder, filename)
@@ -17,16 +24,34 @@ if __name__ == "__main__":
                 shutil.rmtree(file_path)
         except Exception as e:
             print("Failed to delete %s. Reason: %s" % (file_path, e))
-    try:
-        if os.path.isdir("./[Result]/Result"):
-            raise RuntimeError('Rename "Result" folder')
-    except RuntimeError as e:
-        print(repr(e))
-        raise
 
-    CONFIG_PATH = "./config.yml"
-    GEN_LIST = [2000, 500, 100]
-    NIND = 50
+
+def save_pareto():
+    objv_path = "./Result/ObjV.csv"
+    objv = np.genfromtxt(objv_path, delimiter=",")
+    plt.plot(objv[:, 1], objv[:, 0], ".r")
+    plt.title("Pareto Front")
+    plt.xlabel("std of every robots' angle changes")
+    plt.ylabel("total angle changes of every robots")
+    plt.savefig("./Result/pareto.png")
+
+
+def save_status(passTime_sec):
+    file = open(f"./Result/info.txt", "a")
+    file.write(f'\n{"number of generation:":<25}{GEN_LIST}\n')
+    file.write(f'{"number of chromosome:":<25}{NIND}\n')
+    file.write(
+        f'\n{"pass time:":<25}'
+        + f"{datetime.timedelta(seconds=passTime_sec)}({passTime_sec} secs)\n"
+    )
+    file.close()
+    shutil.copyfile("./output_point.csv", "./Result/output_point.csv")
+    shutil.copyfile("./config.yml", "./Result/config.yml")
+    shutil.copytree("./log", "./Result/log")
+
+
+def main():
+    del_result_contents()
 
     num_slicing = len(GEN_LIST)
     passTime_sec = 0
@@ -40,8 +65,8 @@ if __name__ == "__main__":
         myAlgorithm.MAXGEN = GEN_LIST[step]
         myAlgorithm.verbose = True
         myAlgorithm.drawing = 0
-        if step + 1 == num_slicing:
-            myAlgorithm.drawing = 1
+        # if step + 1 == num_slicing:
+        #     myAlgorithm.drawing = 1
         [NDSet, population] = myAlgorithm.run()
         NDSet.save()
         if os.path.exists(f"./log/Step_{step}"):
@@ -49,19 +74,12 @@ if __name__ == "__main__":
         shutil.copytree("./Result", f"./log/Step_{step}")
         passTime_sec += myAlgorithm.passTime
 
-    print("time: %f 秒" % passTime_sec)
-    file = open(f"./Result/info.txt", "a")
-    file.write(f'\n{"number of generation:":<25}{GEN_LIST}\n')
-    file.write(f'{"number of chromosome:":<25}{NIND}\n')
-    file.write(
-        f'\n{"pass time:":<25}\
-        {datetime.timedelta(seconds=passTime_sec)}({passTime_sec} secs)\n'
-    )
-    file.close()
-    shutil.move("./Pareto Front.svg", "./Result/Pareto Front.svg")
-    shutil.copyfile("./output_point.csv", "./Result/output_point.csv")
-    shutil.copyfile("./config.yml", "./Result/config.yml")
-    shutil.copytree("./log", "./Result/log")
+    save_pareto()
+    save_status(passTime_sec)
     shutil.copytree(
         "./Result", f"./[Result]/{datetime.datetime.now().strftime('%y%m%d-%H%M%S')}"
     )
+
+
+if __name__ == "__main__":
+    main()

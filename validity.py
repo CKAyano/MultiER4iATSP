@@ -115,7 +115,7 @@ class DrawRobots:
                     raise
                     continue
         if is_log:
-            _ = ccv3.scoreOfTwoRobot_step(chrom[chromoInd, :], logging)
+            _ = ccv3.score_step(chrom[chromoInd, :], logging)
 
     def png_to_gif(self, fps=24):
         chrom_count = len(os.listdir(f"./ValidityFigure/{self.folderName}"))

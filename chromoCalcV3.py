@@ -204,11 +204,12 @@ class ChromoCalcV3:
 
         isFirstLoop = True
         totalAngle = 0
-        numOfJoints = self.orgPos.size
-        totalInt_qa, totalInt_qb = np.zeros((0, numOfJoints)), np.zeros((0, numOfJoints))
+        joints_count = self.orgPos.size
 
         len_pointIndex = len(self.robots[0].point_index)
-        totalInt_q = [np.zeros((0, numOfJoints))] * 4
+        totalInt_q = [np.zeros((0, joints_count))] * 4
+        # totalAngle = [np.zeros((0, joints_count))] * 4
+        totalAngle = 0
         for i in range(len_pointIndex):
             if isFirstLoop:
                 q_1_best = [self.orgPos] * self.robot_count
@@ -223,23 +224,24 @@ class ChromoCalcV3:
             int_q, q_2_best, angOffset = _genTwoRobotInt
             for rb in range(self.robot_count):
                 totalInt_q[rb] = np.vstack((totalInt_q[rb], int_q[rb]))
+                # max_angleOffset[rb] =
+                # totalAngle[rb] = np.vstack((totalAngle[rb], angOffset[rb]))
+            totalAngle = totalAngle + np.max(np.array(angOffset), axis=1)
 
         int_count = [np.shape(totalInt_q[rb])[0] for rb in range(self.robot_count)]
-        min_int_count = min(int_count)
         max_int_count = max(int_count)
         for rb in range(self.robot_count):
             need_append_count = max_int_count - int_count[rb]
             org = self.orgPos.copy()[None, :]
             org_need_append = np.repeat(org, need_append_count, axis=0)
             totalInt_q[rb] = np.vstack((totalInt_q[rb], org_need_append))
+
         return totalInt_q, totalAngle
 
     def slicingCheckPoint(self, totalInt_q, levelOfSlicing, preInd):
-        self.allOneSide = False
         slicing_count = 0
         int_count = totalInt_q[0].shape[0]
         if int_count == 0:
-            self.allOneSide = True
             return None
         for i in range(levelOfSlicing):
             slicing_count = slicing_count + np.power(2, i)
@@ -261,7 +263,7 @@ class ChromoCalcV3:
             )
         return totalInt_q, False, slicingInd
 
-    def intOfStep(self, chromosome):
+    def interpolation_step(self, chromosome):
         _interpolation = self.interpolation(chromosome)
         if _interpolation is None:
             return None
@@ -312,11 +314,15 @@ class ChromoCalcV3:
         return False
 
     # @np_cache
-    def scoreOfTwoRobot(self, chromosome, logging):
+    def score_slicing(self, chromosome, logging):
         # chromosome = np.array(hashable_chromosome)
         _interpolation = self.interpolation(chromosome)
         if _interpolation is not None:
-            totalInt_q, totalAngle = _interpolation[0], np.max(_interpolation[1])
+            totalInt_q, totalAngle, std_rbs_angleOffset = (
+                _interpolation[0],
+                np.sum(_interpolation[1]),
+                np.std(_interpolation[1]),
+            )
 
             if self.isOutOfRange(totalInt_q):
                 collisionScore = 90000000
@@ -333,7 +339,7 @@ class ChromoCalcV3:
                     checkPoint = self.slicingCheckPoint(
                         totalInt_q, levelOfSlicing, preInd
                     )
-                    if self.allOneSide:
+                    if checkPoint is None:
                         collisionScore = 0
                         msg = "Save, but all points on one side!"
                         print(msg)
@@ -374,18 +380,22 @@ class ChromoCalcV3:
             logging.save_status(msg)
 
         score_dist = totalAngle + collisionScore
-        points_eachRobot = self.points_count // self.robot_count
-        robots_path_len = [
-            len(self.robots[rb]) - points_eachRobot for rb in range(self.robot_count)
-        ]
-        score_unif = np.sum(np.abs(robots_path_len))
-        return [score_dist, score_unif]
+        # points_eachRobot = self.points_count // self.robot_count
+        # robots_path_len = [
+        #     len(self.robots[rb]) - points_eachRobot for rb in range(self.robot_count)
+        # ]
+        # score_unif = np.sum(np.abs(robots_path_len))
+        return [score_dist, std_rbs_angleOffset]
 
-    def scoreOfTwoRobot_step(self, chromosome, logging):
+    def score_step(self, chromosome, logging):
         # chromosome = np.array(hashable_chromosome)
-        _interpolation = self.intOfStep(chromosome)
+        _interpolation = self.interpolation_step(chromosome)
         if _interpolation is not None:
-            totalInt_q, totalAngle = _interpolation[0], np.max(_interpolation[1])
+            totalInt_q, totalAngle, std_rbs_angleOffset = (
+                _interpolation[0],
+                np.sum(_interpolation[1]),
+                np.std(_interpolation[1]),
+            )
 
             if self.isOutOfRange(totalInt_q):
                 collisionScore = 90000000
@@ -406,17 +416,18 @@ class ChromoCalcV3:
         else:
             totalAngle = 0
             collisionScore = 90000000
+            std_rbs_angleOffset = 10000
             msg = "Out of Range!"
             print(msg)
             logging.save_status(msg)
 
         score_dist = totalAngle + collisionScore
-        points_eachRobot = self.points_count // self.robot_count
-        robots_path_len = [
-            len(self.robots[rb]) - points_eachRobot for rb in range(self.robot_count)
-        ]
-        score_unif = np.sum(np.abs(robots_path_len))
-        return [score_dist, score_unif]
+        # points_eachRobot = self.points_count // self.robot_count
+        # robots_path_len = [
+        #     len(self.robots[rb]) - points_eachRobot for rb in range(self.robot_count)
+        # ]
+        # score_unif = np.sum(np.abs(robots_path_len))
+        return [score_dist, std_rbs_angleOffset]
 
 
 if __name__ == "__main__":
@@ -429,4 +440,4 @@ if __name__ == "__main__":
     pz = importedPoint[:, 2]
     axisRange = np.array([[-170, 170], [-30, 120], [-204, 69]])
     fun = ChromoCalcV3()
-    test = fun.scoreOfTwoRobot(chrom, 0, orgPos, px, py, pz, axisRange)
+    test = fun.score_slicing(chrom, 0, orgPos, px, py, pz, axisRange)

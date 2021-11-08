@@ -65,16 +65,14 @@ class MyProblem(ea.Problem):  # 继承Problem父类
             self.ccv3.chromoIndex = chromoIndex
             if self.isFirstImp:
                 self.ccv3.adjChromo(pop.Chrom[chromoIndex, :], pop)
-            score_all = self.ccv3.scoreOfTwoRobot_step(
-                pop.Chrom[chromoIndex, :], self.logging
-            )
+            score_all = self.ccv3.score_step(pop.Chrom[chromoIndex, :], self.logging)
             score_dist[chromoIndex] = score_all[0]
             # aim2 手臂點分佈最平均
             score_unif[chromoIndex] = score_all[1]
             # print(f'\t{ccv3.scoreOfTwoRobot.cache_info()}')
         self.isFirstImp = False
-        pop.CV = score_dist - 1000000
-        pop.ObjV = np.hstack([score_dist, score_unif])
+        pop.CV = np.hstack((score_dist - 1000000, score_unif - 10000))
+        pop.ObjV = np.hstack((score_dist, score_unif))
 
 
 if __name__ == "__main__":
