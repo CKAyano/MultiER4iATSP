@@ -3,7 +3,7 @@ import pygeos.creation as pgc
 import pygeos.set_operations as pgi
 import warnings
 from dataclasses import dataclass
-from robotInfo import Position, Robot, Coord, Coord_all
+from robotInfo import Position, Robot, Coord, Coord_all, Config
 
 d_1 = 0
 a_2 = 260
@@ -12,12 +12,10 @@ d_4 = 290
 
 
 class RobotCalc_pygeos:
-    def __init__(self, baseX_offset: float, baseY_offset: float, linkWidth: float):
-        self.baseX_offset = baseX_offset
-        self.baseY_offset = baseY_offset
-        self.linkWidth = linkWidth
+    def __init__(self, config: Config):
+        self.config = config
 
-    def userIK(self, vv: Coord, direct_array: np.ndarray):
+    def userIK(self, vv: Coord):
         def angleAdj(ax):
             for ii in range(len(ax)):
                 while ax[ii] > np.pi:
@@ -102,10 +100,10 @@ class RobotCalc_pygeos:
         group_4 = np.hstack((q1[3], q2[3], q3[3]))
 
         q = np.vstack((group_1, group_2, group_3, group_4))
-        q_all = self.joint_three2six(q, direct_array)
+        q_all = self.joint_three2six(q)
         return q_all
 
-    def joint_three2six(self, q_array: np.ndarray, direct_array: np.ndarray):
+    def joint_three2six(self, q_array: np.ndarray):
         q_all = np.zeros((0, 6))
         len_q = q_array.shape[0]
         for i in range(len_q):
@@ -130,7 +128,7 @@ class RobotCalc_pygeos:
                 ]
             )
             R1_3 = R1.dot(R2).dot(R3)
-            Rd = np.linalg.inv(R1_3).dot(direct_array)
+            Rd = np.linalg.inv(R1_3).dot(self.config.direct_array)
             q5 = [np.arccos(Rd[2, 2]), -np.arccos(Rd[2, 2])]
             q4 = [
                 np.arctan2(Rd[1, 2] / np.sin(q5[1]), Rd[0, 2] / np.sin(q5[1])),
@@ -146,7 +144,7 @@ class RobotCalc_pygeos:
             q_all = np.vstack((q_all, q))
         return q_all
 
-    def greedySearch(self, q_f_best: np.ndarray, q_array: np.ndarray):
+    def greedy_search(self, q_f_best: np.ndarray, q_array: np.ndarray):
         diff_q1 = np.absolute(q_array[:, 0] - q_f_best[0])
         diff_q2 = np.absolute(q_array[:, 1] - q_f_best[1])
         diff_q3 = np.absolute(q_array[:, 2] - q_f_best[2])
@@ -222,16 +220,16 @@ class RobotCalc_pygeos:
         if position == Position.LEFT:
             vv_b = vv_a
         elif position == Position.RIGHT:
-            vv_b.xx = -vv_a.xx + self.baseX_offset
+            vv_b.xx = -vv_a.xx + self.config.baseX_offset
             vv_b.yy = -vv_a.yy
             vv_b.zz = vv_a.zz
         elif position == Position.UP:
-            vv_b.xx = self.baseY_offset - vv_a.yy
-            vv_b.yy = vv_a.xx - self.baseX_offset / 2
+            vv_b.xx = self.config.baseY_offset - vv_a.yy
+            vv_b.yy = vv_a.xx - self.config.baseX_offset / 2
             vv_b.zz = vv_a.zz
         elif position == Position.DOWN:
-            vv_b.xx = self.baseY_offset + vv_a.yy
-            vv_b.yy = self.baseX_offset / 2 - vv_a.xx
+            vv_b.xx = self.config.baseY_offset + vv_a.yy
+            vv_b.yy = self.config.baseX_offset / 2 - vv_a.xx
             vv_b.zz = vv_a.zz
         return vv_b
 
@@ -247,26 +245,52 @@ class RobotCalc_pygeos:
 
         return v_all
 
-    def cvAxisRange(self, q_best: np.ndarray, axisRange: np.ndarray):
+    def coord2bestAngle(self, vv: Coord, q_1_best, robot: Robot):
+        vv = self.robot2world(vv, robot.position)
+        q_2 = self.userIK(vv)
+        len_q = q_2.shape[0]
+        idx_notOutRange = np.zeros((0))
+        for i in range(len_q):
+            q_2_test = q_2[i, :]
+            q_2_test = q_2_test[None, :]
+            q_2_outRange = self.cv_joints_range(q_2_test)
+            if not q_2_outRange:
+                idx_notOutRange = np.hstack((idx_notOutRange, i))
+
+        idx_notOutRange = idx_notOutRange.astype(int)
+        q_2_output = q_2.copy()
+        q_2_output = q_2_output[idx_notOutRange, :]
+        if idx_notOutRange.shape[0] == 1:
+            if q_2_output.ndim == 2:
+                q_2_output = np.squeeze(q_2_output)
+            return q_2_output
+        elif idx_notOutRange.shape[0] == 0:
+            q_2_output = np.repeat(np.nan, q_2.shape[1])
+            return q_2_output
+        else:
+            q_2_best = self.greedy_search(q_1_best, q_2_output)
+        return q_2_best
+
+    def cv_joints_range(self, q_best: np.ndarray):
         if q_best.ndim == 1:
             q_best = q_best[None, :]
-        axisRange = np.radians(axisRange)
-        numOfAxis = axisRange.shape[0]
+        joints_range = self.config.joints_range
+        numOfAxis = joints_range.shape[0]
         isQNan = np.isnan(q_best)
         if np.any(isQNan):
             return True
         else:
             for i in range(numOfAxis):
-                condition_ql = q_best[:, i] < axisRange[i, 0]
-                condition_qu = q_best[:, i] > axisRange[i, 1]
+                condition_ql = q_best[:, i] < joints_range[i, 0]
+                condition_qu = q_best[:, i] > joints_range[i, 1]
                 if np.any(condition_ql) or np.any(condition_qu):
                     return True
         return False
 
-    def cvCollision(self, q_a, q_b, robot_a: Robot, robot_b: Robot):
+    def cv_collision(self, q_a, q_b, robot_a: Robot, robot_b: Robot):
 
         # % ------------------------- qa ------------------------- % #
-        point = self.generateLinkWidenPoint(q_a, robot_a)
+        point = self.get_link_points(q_a, robot_a)
 
         ring1 = pgc.linearrings([point[0], point[1], point[2], point[3]])
         ring2 = pgc.linearrings([point[0], point[1], point[5], point[4]])
@@ -335,8 +359,8 @@ class RobotCalc_pygeos:
             else:
                 return True
 
-    def generateLinkWidenPoint(self, q, robot: Robot):
-        def calcNormalVec(v_f: Coord, v_e: Coord):
+    def get_link_points(self, q, robot: Robot):
+        def get_normal_vec(v_f: Coord, v_e: Coord):
             v1_point = v_f.coordToNp()
             v2_point = v_e.coordToNp()
             if q[0] < np.pi / 2 + 0.0001 and q[0] > np.pi / 2 - 0.0001:
@@ -359,42 +383,24 @@ class RobotCalc_pygeos:
 
         v_all = self.userFK(q)
         v_all = self.robot2world_v_all(v_all, robot.position)
-        v2_point, v4_point, normalVec_1, normalVec_2 = calcNormalVec(v_all.v2, v_all.v4)
-        _, v5_point, normalVec_3, normalVec_4 = calcNormalVec(v_all.v4, v_all.v5)
-        p1 = v2_point + (-normalVec_1 + normalVec_2) * self.linkWidth / 2
-        p2 = v2_point + (normalVec_1 + normalVec_2) * self.linkWidth / 2
-        p3 = v2_point + (normalVec_1 - normalVec_2) * self.linkWidth / 2
-        p4 = v2_point + (-normalVec_1 - normalVec_2) * self.linkWidth / 2
-        p5 = v4_point + (-normalVec_1 + normalVec_2) * self.linkWidth / 2
-        p6 = v4_point + (normalVec_1 + normalVec_2) * self.linkWidth / 2
-        p7 = v4_point + (normalVec_1 - normalVec_2) * self.linkWidth / 2
-        p8 = v4_point + (-normalVec_1 - normalVec_2) * self.linkWidth / 2
+        v2_point, v4_point, normalVec_1, normalVec_2 = get_normal_vec(v_all.v2, v_all.v4)
+        _, v5_point, normalVec_3, normalVec_4 = get_normal_vec(v_all.v4, v_all.v5)
+        p1 = v2_point + (-normalVec_1 + normalVec_2) * self.config.link_width / 2
+        p2 = v2_point + (normalVec_1 + normalVec_2) * self.config.link_width / 2
+        p3 = v2_point + (normalVec_1 - normalVec_2) * self.config.link_width / 2
+        p4 = v2_point + (-normalVec_1 - normalVec_2) * self.config.link_width / 2
+        p5 = v4_point + (-normalVec_1 + normalVec_2) * self.config.link_width / 2
+        p6 = v4_point + (normalVec_1 + normalVec_2) * self.config.link_width / 2
+        p7 = v4_point + (normalVec_1 - normalVec_2) * self.config.link_width / 2
+        p8 = v4_point + (-normalVec_1 - normalVec_2) * self.config.link_width / 2
 
-        p9 = v4_point + (-normalVec_3 + normalVec_4) * self.linkWidth / 2
-        p10 = v4_point + (normalVec_3 + normalVec_4) * self.linkWidth / 2
-        p11 = v4_point + (normalVec_3 - normalVec_4) * self.linkWidth / 2
-        p12 = v4_point + (-normalVec_3 - normalVec_4) * self.linkWidth / 2
-        p13 = v5_point + (-normalVec_3 + normalVec_4) * self.linkWidth / 2
-        p14 = v5_point + (normalVec_3 + normalVec_4) * self.linkWidth / 2
-        p15 = v5_point + (normalVec_3 - normalVec_4) * self.linkWidth / 2
-        p16 = v5_point + (-normalVec_3 - normalVec_4) * self.linkWidth / 2
-        point = (p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16)
-        return point
-
-
-if __name__ == "__main__":
-    qa = np.array([0.09499919, 0.59284477, -0.26421251])
-    qb = np.array([0.27674711, 0.64568055, -0.3508449])
-    test = RobotCalc_pygeos(750, 200)
-    print(test.cvCollision(qa, qb))
-    vv_a = Coord(150, 0, 100)
-    # vv_b = robot2world(vv_a)
-    direct_array = np.array([[0, 0, -1], [0, 1, 0], [1, 0, 0]])
-    axisRange = np.array(
-        [[-170, 170], [-110, 120], [-204, 69], [-190, 190], [-120, 120], [-360, 360]]
-    )
-    q = test.userIK(vv_a, direct_array)
-    print(q)
-    for i in range(q.shape[0]):
-        isOutOfRange = test.cvAxisRange(q[i, :], axisRange)
-        print(isOutOfRange)
+        p9 = v4_point + (-normalVec_3 + normalVec_4) * self.config.link_width / 2
+        p10 = v4_point + (normalVec_3 + normalVec_4) * self.config.link_width / 2
+        p11 = v4_point + (normalVec_3 - normalVec_4) * self.config.link_width / 2
+        p12 = v4_point + (-normalVec_3 - normalVec_4) * self.config.link_width / 2
+        p13 = v5_point + (-normalVec_3 + normalVec_4) * self.config.link_width / 2
+        p14 = v5_point + (normalVec_3 + normalVec_4) * self.config.link_width / 2
+        p15 = v5_point + (normalVec_3 - normalVec_4) * self.config.link_width / 2
+        p16 = v5_point + (-normalVec_3 - normalVec_4) * self.config.link_width / 2
+        points = (p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16)
+        return points

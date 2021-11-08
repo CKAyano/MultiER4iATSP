@@ -69,9 +69,7 @@ class DrawRobots:
         ccv3 = ChromoCalcV3(self.config, self.points, 0, 1)
         cphs = []
         for rb in range(self.robot_count):
-            points = self.rc.generateLinkWidenPoint(
-                q_best[rb][intPoint, :], ccv3.robots[rb]
-            )
+            points = self.rc.get_link_points(q_best[rb][intPoint, :], ccv3.robots[rb])
             _cph = self.cph(points)
             cphs.append(_cph)
         return cphs
@@ -112,7 +110,7 @@ class DrawRobots:
                 try:
                     self.draw(totalInt_q, intPoint, path)
                 except Exception:
-                    raise
+                    # raise
                     continue
         if is_log:
             _ = ccv3.score_step(chrom[chromoInd, :], logging)

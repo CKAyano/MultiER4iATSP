@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List
 import numpy as np
 from enum import Enum, auto
+import yaml
 
 
 @dataclass
@@ -52,10 +53,23 @@ class Robot:
     position: Position
     robot_path: np.ndarray = None
     point_index: np.ndarray = None
-    # interp: Optional[np.ndarray] = None
 
     def __post_init__(self):
         self.delimiter = -self.id
 
     def __len__(self):
         return len(self.robot_path)
+
+
+class Config:
+    def __init__(self, config_path) -> None:
+        with open(config_path, "r") as config_file:
+            config = yaml.load(config_file)
+        self.robots_count = config["robots_count"]
+        self.points_range = config["points_range"]
+        self.link_width = config["link_width"]
+        self.org_pos = np.radians(np.array(config["org_pos"]))
+        self.joints_range = np.radians(np.array(config["joints_range"]))
+        self.direct_array = np.array(config["direct_array"])
+        self.baseX_offset = sum(self.points_range[0])
+        self.baseY_offset = (self.points_range[1][1] - self.points_range[1][0]) / 2

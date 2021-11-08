@@ -1,5 +1,4 @@
-# [[150, 600], [-300, 300], [100, 100]]
-robot_count: 4
+robots_count: 4
 
 points_range:
   -
@@ -12,9 +11,9 @@ points_range:
     - 0
     - 0
 
-linkWidth: 200
+link_width: 200
 
-originalPosture:
+org_pos:
   - 90
   - 45
   - -45
@@ -22,7 +21,7 @@ originalPosture:
   - 90
   - 0
 
-axisRange:
+joints_range:
   -
     - -170
     - 170
