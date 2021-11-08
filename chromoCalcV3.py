@@ -244,40 +244,6 @@ class ChromoCalcV3:
             totalInt_q[rb] = totalInt_q[rb][::split_num, :]
         return totalInt_q, totalAngle
 
-    def is_near_orgPos(self, q: np.ndarray) -> bool:
-        diff = np.abs(q - self.config.org_pos)
-        cond = diff <= 0.000001
-        if np.all(cond):
-            return True
-        return False
-
-    def is_outOfRange(self, totalInt_q) -> bool:
-        isOutOfRange_q = [
-            self.rc.cv_joints_range(totalInt_q[rb])
-            for rb in range(self.config.robots_count)
-        ]
-
-        if any(isOutOfRange_q):
-            return True
-        return False
-
-    def is_collision(self, totalInt_q) -> bool:
-        int_count = np.shape(totalInt_q[0])[0]
-        for rb in range(0, self.config.robots_count):
-            for rb_next in range(rb + 1, self.config.robots_count):
-                for i in range(int_count):
-                    if not self.is_near_orgPos(
-                        totalInt_q[rb][i, :]
-                    ) or not self.is_near_orgPos(totalInt_q[rb_next][i, :]):
-                        if self.rc.cv_collision(
-                            totalInt_q[rb][i, :],
-                            totalInt_q[rb_next][i, :],
-                            self.robots[rb],
-                            self.robots[rb_next],
-                        ):
-                            return True
-        return False
-
     # @np_cache
     def score_slicing(self, chromosome, logging):
         # chromosome = np.array(hashable_chromosome)
@@ -383,19 +349,3 @@ class ChromoCalcV3:
 
         score_dist = totalAngle + collisionScore
         return [score_dist, std_rbs_angleOffset]
-
-
-class Interpolation:
-    pass
-
-
-class Score:
-    pass
-
-
-class Condition:
-    pass
-
-
-class ChromoCalc:
-    pass

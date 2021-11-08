@@ -5,7 +5,7 @@ from robotCalc_pygeos import RobotCalc_pygeos
 import Geometry3Dmaster.Geometry3D as gm
 from pathlib import Path
 from typing import List, Optional
-from robotInfo import Robot
+from robotInfo import Robot, Config
 from status_logging import Collision_status
 from ga_Problem import Problem_config
 import os
@@ -16,19 +16,13 @@ import matplotlib.pyplot as plt
 
 class DrawRobots:
     def __init__(self, folderName: str) -> None:
-        self.config = Problem_config(f"./[Result]/{folderName}/config.yml").config
+        self.config = Config(f"./[Result]/{folderName}/config.yml")
         self.points = np.genfromtxt(
             f"./[Result]/{folderName}/output_point.csv", delimiter=","
         )
         self.folderName = folderName
-        self.robot_count = self.config["robot_count"]
-        self.linkWidth = self.config["linkWidth"]
-        self.points_range = self.config["points_range"]
-        self.baseX_offset = sum(self.points_range[0])
-        self.baseY_offset = (self.points_range[1][1] - self.points_range[1][0]) / 2
-        self.rc = RobotCalc_pygeos(
-            self.baseX_offset, self.baseY_offset, self.linkWidth / 2,
-        )
+        self.config.link_width = self.config.link_width / 2
+        self.rc = RobotCalc_pygeos(self.config)
         self.robots_color = ["k", "r", "g", "b"]
         # self.ccv3 = ChromoCalcV3(self.config, self.points, 0, 1)
 
@@ -68,7 +62,7 @@ class DrawRobots:
     def cph_robots(self, q_best: List[np.ndarray], intPoint) -> bool:
         ccv3 = ChromoCalcV3(self.config, self.points, 0, 1)
         cphs = []
-        for rb in range(self.robot_count):
+        for rb in range(self.config.robots_count):
             points = self.rc.get_link_points(q_best[rb][intPoint, :], ccv3.robots[rb])
             _cph = self.cph(points)
             cphs.append(_cph)
@@ -141,7 +135,7 @@ class DrawRobots:
         for c in range(chrom_count):
             chrom = chroms[c, :]
             ccv3.set_robotsPath(chrom)
-            for rb in range(self.robot_count):
+            for rb in range(self.config.robots_count):
                 path_index = ccv3.robots[rb].robot_path - 1
                 plt.plot(
                     px[path_index], py[path_index], f"{self.robots_color[rb]}o",
