@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import List, Optional
 from robotInfo import Robot, Config
 from status_logging import Collision_status
-from ga_Problem import Problem_config
 import os
 import imageio
 import natsort
@@ -17,9 +16,7 @@ import matplotlib.pyplot as plt
 class DrawRobots:
     def __init__(self, folderName: str) -> None:
         self.config = Config(f"./[Result]/{folderName}/config.yml")
-        self.points = np.genfromtxt(
-            f"./[Result]/{folderName}/output_point.csv", delimiter=","
-        )
+        self.points = np.genfromtxt(f"./[Result]/{folderName}/output_point.csv", delimiter=",")
         self.folderName = folderName
         self.config.link_width = self.config.link_width / 2
         self.rc = RobotCalc_pygeos(self.config)
@@ -72,7 +69,7 @@ class DrawRobots:
         cphs = self.cph_robots(q_best, intPoint)
         r = gm.render.Renderer()
 
-        for rb in range(self.robot_count):
+        for rb in range(self.config.robots_count):
             r.add((cphs[rb][0], self.robots_color[rb], 1), normal_length=0)
             r.add((cphs[rb][1], self.robots_color[rb], 1), normal_length=0)
         # r.show()
@@ -80,17 +77,13 @@ class DrawRobots:
 
     def chrom_to_png(self, is_log: Optional[bool] = None):
         ccv3 = ChromoCalcV3(self.config, self.points, 0, 1)
-        chrom = np.genfromtxt(
-            f"./[Result]/{self.folderName}/Chrom.csv", delimiter=",", dtype="int32"
-        )
+        chrom = np.genfromtxt(f"./[Result]/{self.folderName}/Chrom.csv", delimiter=",", dtype="int32")
         for chromoInd in range(chrom.shape[0]):
             if is_log:
-                Path(
-                    f"./ValidityFigure/{self.folderName}/ChromID_{chromoInd}/log"
-                ).mkdir(parents=True, exist_ok=True)
-                logging = Collision_status(
-                    0, f"./ValidityFigure/{self.folderName}/ChromID_{chromoInd}/log"
+                Path(f"./ValidityFigure/{self.folderName}/ChromID_{chromoInd}/log").mkdir(
+                    parents=True, exist_ok=True
                 )
+                logging = Collision_status(0, f"./ValidityFigure/{self.folderName}/ChromID_{chromoInd}/log")
             totalInt_q, _ = ccv3.interpolation(chrom[chromoInd, :])
             points_count = np.shape(totalInt_q[0])[0]
             Path(f"./ValidityFigure/{self.folderName}/ChromID_{chromoInd}/figure").mkdir(
@@ -98,12 +91,12 @@ class DrawRobots:
             )
             for intPoint in range(points_count):
                 path = (
-                    f"./ValidityFigure/{self.folderName}/"
-                    + f"ChromID_{chromoInd}/figure/figure_{intPoint}"
+                    f"./ValidityFigure/{self.folderName}/" + f"ChromID_{chromoInd}/figure/figure_{intPoint}"
                 )
                 try:
                     self.draw(totalInt_q, intPoint, path)
-                except Exception:
+                except Exception as e:
+                    print(f"can't draw, because {e}")
                     # raise
                     continue
         if is_log:
@@ -125,9 +118,7 @@ class DrawRobots:
 
     def draw_manuf_route(self, is_connect: Optional[bool] = None):
         ccv3 = ChromoCalcV3(self.config, self.points, 0, 1)
-        chroms = np.genfromtxt(
-            f"./[Result]/{self.folderName}/Chrom.csv", delimiter=",", dtype="int32"
-        )
+        chroms = np.genfromtxt(f"./[Result]/{self.folderName}/Chrom.csv", delimiter=",", dtype="int32")
         chrom_count = len(os.listdir(f"./ValidityFigure/{self.folderName}"))
 
         px = self.points[:, 0]
@@ -154,14 +145,12 @@ class DrawRobots:
                             color="red",
                         )
 
-            plt.savefig(
-                f"./ValidityFigure/{self.folderName}/ChromID_{c}/manuf_route.png"
-            )
+            plt.savefig(f"./ValidityFigure/{self.folderName}/ChromID_{c}/manuf_route.png")
             plt.show()
 
 
 def main():
-    folderName = "211105-104518"
+    folderName = "50_points/211111-215630"
     dr = DrawRobots(folderName)
     dr.chrom_to_png()
     dr.png_to_gif()

@@ -6,6 +6,7 @@ import shutil
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import gc
 
 
 CONFIG_PATH = "./config.yml"
@@ -34,6 +35,10 @@ def save_pareto():
     plt.xlabel("std of every robots' angle changes")
     plt.ylabel("total angle changes of every robots")
     plt.savefig("./Result/pareto.png")
+    plt.figure().clear()
+    plt.close()
+    plt.cla()
+    plt.clf()
 
 
 def save_status(passTime_sec):
@@ -41,8 +46,7 @@ def save_status(passTime_sec):
     file.write(f'\n{"number of generation:":<25}{GEN_LIST}\n')
     file.write(f'{"number of chromosome:":<25}{NIND}\n')
     file.write(
-        f'\n{"pass time:":<25}'
-        + f"{datetime.timedelta(seconds=passTime_sec)}({passTime_sec} secs)\n"
+        f'\n{"pass time:":<25}' + f"{datetime.timedelta(seconds=passTime_sec)}({passTime_sec} secs)\n"
     )
     file.close()
     shutil.copyfile("./output_point.csv", "./Result/output_point.csv")
@@ -76,10 +80,16 @@ def main():
 
     save_pareto()
     save_status(passTime_sec)
-    shutil.copytree(
-        "./Result", f"./[Result]/{datetime.datetime.now().strftime('%y%m%d-%H%M%S')}"
-    )
+    shutil.copytree("./Result", f"./[Result]/{datetime.datetime.now().strftime('%y%m%d-%H%M%S')}")
+
+
+def del_memory():
+    for name in dir():
+        del globals()[name]
+    gc.collect()
 
 
 if __name__ == "__main__":
+    # for _ in range(6):
     main()
+    # del_memory()

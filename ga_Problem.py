@@ -30,10 +30,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         if step == 0:
             self.is_firstImp = True
             file = open(f"./Result/info.txt", "w")
-            file.write(
-                f'{"start time:":<25}'
-                + f'{datetime.datetime.now().strftime("%y%m%d-%H%M%S")}\n'
-            )
+            file.write(f'{"start time:":<25}' + f'{datetime.datetime.now().strftime("%y%m%d-%H%M%S")}\n')
             file.write(f'{"number of robots:":<25}{robots_count}\n')
             file.write(f'{"points range:":<25}{points_range}\n')
             file.write(f'{"number of points:":<25}{points_count}\n')
@@ -51,16 +48,14 @@ class MyProblem(ea.Problem):  # 继承Problem父类
 
         score_dist = np.ones((nind, 1))
         score_unif = np.ones((nind, 1))
-        for chromo_index in range(nind):
+        for chromo_id in range(nind):
             # aim1 總加工時間最短
-            # chromosome = population[chromoIndex, :]
-            self.ccv3.chromo_index = chromo_index
             if self.is_firstImp:
-                self.ccv3.adj_chromo(pop.Chrom[chromo_index, :], pop)
-            score_all = self.ccv3.score_step(pop.Chrom[chromo_index, :], self.logging)
-            score_dist[chromo_index] = score_all[0]
+                self.ccv3.adj_chromo(pop.Chrom[chromo_id, :], chromo_id, pop)
+            score_all = self.ccv3.score_step(pop.Chrom[chromo_id, :], self.logging)
+            score_dist[chromo_id] = score_all[0]
             # aim2 手臂點分佈最平均
-            score_unif[chromo_index] = score_all[1]
+            score_unif[chromo_id] = score_all[1]
             # print(f'\t{ccv3.scoreOfTwoRobot.cache_info()}')
         self.is_firstImp = False
         pop.CV = np.hstack((score_dist - 1000000, score_unif - 10000))

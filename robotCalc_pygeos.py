@@ -12,10 +12,10 @@ d_4 = 290
 
 
 class RobotCalc_pygeos:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config) -> None:
         self.config = config
 
-    def userIK(self, vv: Coord):
+    def userIK(self, vv: Coord) -> np.ndarray:
         def angleAdj(ax):
             for ii in range(len(ax)):
                 while ax[ii] > np.pi:
@@ -35,12 +35,8 @@ class RobotCalc_pygeos:
         q23 = np.zeros(4)
         numq2 = -1
 
-        q1[0] = np.arctan2(py, px) - np.arctan2(
-            0, np.sqrt(np.square(px) + np.square(py))
-        )
-        q1[1] = np.arctan2(py, px) - np.arctan2(
-            0, -np.sqrt(np.square(px) + np.square(py))
-        )
+        q1[0] = np.arctan2(py, px) - np.arctan2(0, np.sqrt(np.square(px) + np.square(py)))
+        q1[1] = np.arctan2(py, px) - np.arctan2(0, -np.sqrt(np.square(px) + np.square(py)))
 
         k = (
             np.square(d_1)
@@ -53,9 +49,7 @@ class RobotCalc_pygeos:
             - np.square(a_2)
         ) / (2 * a_2)
 
-        q3[0] = np.arctan2(a_3, d_4) - np.arctan2(
-            k, np.sqrt(np.square(a_3) + np.square(d_4) - np.square(k))
-        )
+        q3[0] = np.arctan2(a_3, d_4) - np.arctan2(k, np.sqrt(np.square(a_3) + np.square(d_4) - np.square(k)))
         q3[1] = np.arctan2(a_3, d_4) - np.arctan2(
             k, -np.sqrt(np.square(a_3) + np.square(d_4) - np.square(k))
         )
@@ -103,30 +97,16 @@ class RobotCalc_pygeos:
         q_all = self.joint_three2six(q)
         return q_all
 
-    def joint_three2six(self, q_array: np.ndarray):
+    def joint_three2six(self, q_array: np.ndarray) -> np.ndarray:
         q_all = np.zeros((0, 6))
         len_q = q_array.shape[0]
         for i in range(len_q):
             q1 = q_array[i, 0]
             q2 = q_array[i, 1]
             q3 = q_array[i, 2]
-            R1 = np.array(
-                [[1, 0, 0], [0, np.cos(q1), -np.sin(q1)], [0, np.sin(q1), np.cos(q1)]]
-            )
-            R2 = np.array(
-                [
-                    [np.cos(-q2), 0, np.sin(-q2)],
-                    [0, 1, 0],
-                    [-np.sin(-q2), 0, np.cos(-q2)],
-                ]
-            )
-            R3 = np.array(
-                [
-                    [np.cos(-q3), 0, np.sin(-q3)],
-                    [0, 1, 0],
-                    [-np.sin(-q3), 0, np.cos(-q3)],
-                ]
-            )
+            R1 = np.array([[1, 0, 0], [0, np.cos(q1), -np.sin(q1)], [0, np.sin(q1), np.cos(q1)]])
+            R2 = np.array([[np.cos(-q2), 0, np.sin(-q2)], [0, 1, 0], [-np.sin(-q2), 0, np.cos(-q2)]])
+            R3 = np.array([[np.cos(-q3), 0, np.sin(-q3)], [0, 1, 0], [-np.sin(-q3), 0, np.cos(-q3)]])
             R1_3 = R1.dot(R2).dot(R3)
             Rd = np.linalg.inv(R1_3).dot(self.config.direct_array)
             q5 = [np.arccos(Rd[2, 2]), -np.arccos(Rd[2, 2])]
@@ -138,13 +118,11 @@ class RobotCalc_pygeos:
                 np.arctan2(Rd[2, 1] / np.sin(q5[1]), Rd[2, 0] / np.sin(q5[1])),
                 np.arctan2(Rd[2, 1] / np.sin(q5[0]), Rd[2, 0] / np.sin(q5[0])),
             ]
-            q = np.array(
-                [[q1, q2, q3, q4[0], q5[0], q6[0]], [q1, q2, q3, q4[1], q5[1], q6[1]]]
-            )
+            q = np.array([[q1, q2, q3, q4[0], q5[0], q6[0]], [q1, q2, q3, q4[1], q5[1], q6[1]]])
             q_all = np.vstack((q_all, q))
         return q_all
 
-    def greedy_search(self, q_f_best: np.ndarray, q_array: np.ndarray):
+    def greedy_search(self, q_f_best: np.ndarray, q_array: np.ndarray) -> np.ndarray:
         diff_q1 = np.absolute(q_array[:, 0] - q_f_best[0])
         diff_q2 = np.absolute(q_array[:, 1] - q_f_best[1])
         diff_q3 = np.absolute(q_array[:, 2] - q_f_best[2])
@@ -158,15 +136,13 @@ class RobotCalc_pygeos:
             if ii == 0:
                 element_jointMax = jointDiff[jointMax_index[ii], ii]
             else:
-                element_jointMax = np.hstack(
-                    (element_jointMax, jointDiff[jointMax_index[ii], ii])
-                )
+                element_jointMax = np.hstack((element_jointMax, jointDiff[jointMax_index[ii], ii]))
         bestGroup_index = np.argmin(element_jointMax, axis=0)
         q_best = q_array[bestGroup_index, :]
 
         return q_best
 
-    def userFK(self, q: np.ndarray):
+    def userFK(self, q: np.ndarray) -> Coord_all:
         try:
             if q.ndim > 1 and q.shape[0] > 1:
                 raise RuntimeError("theta can only import one set")
@@ -184,21 +160,13 @@ class RobotCalc_pygeos:
         c4 = np.cos(0)
         s4 = np.sin(0)
 
-        axisM1 = np.array(
-            [[c1, 0, -s1, 0], [s1, 0, c1, 0], [0, -1, 0, d_1], [0, 0, 0, 1]]
-        )
+        axisM1 = np.array([[c1, 0, -s1, 0], [s1, 0, c1, 0], [0, -1, 0, d_1], [0, 0, 0, 1]])
 
-        axisM2 = np.array(
-            [[s2, c2, 0, a_2 * s2], [-c2, s2, 0, -a_2 * c2], [0, 0, 1, 0], [0, 0, 0, 1]]
-        )
+        axisM2 = np.array([[s2, c2, 0, a_2 * s2], [-c2, s2, 0, -a_2 * c2], [0, 0, 1, 0], [0, 0, 0, 1]])
 
-        axisM3 = np.array(
-            [[c3, 0, -s3, a_3 * c3], [s3, 0, c3, a_3 * s3], [0, -1, 0, 0], [0, 0, 0, 1]]
-        )
+        axisM3 = np.array([[c3, 0, -s3, a_3 * c3], [s3, 0, c3, a_3 * s3], [0, -1, 0, 0], [0, 0, 0, 1]])
 
-        axisM4 = np.array(
-            [[c4, 0, s4, 0], [s4, 0, -c4, 0], [0, 1, 0, d_4], [0, 0, 0, 1]]
-        )
+        axisM4 = np.array([[c4, 0, s4, 0], [s4, 0, -c4, 0], [0, 1, 0, d_4], [0, 0, 0, 1]])
 
         fk1 = axisM1
         fk2 = fk1.dot(axisM2)
@@ -215,7 +183,7 @@ class RobotCalc_pygeos:
 
         return v_all
 
-    def robot2world(self, vv_a: Coord, position: Position):
+    def robot2world(self, vv_a: Coord, position: Position) -> Coord:
         vv_b = Coord(0, 0, 0)
         if position == Position.LEFT:
             vv_b = vv_a
@@ -233,7 +201,7 @@ class RobotCalc_pygeos:
             vv_b.zz = vv_a.zz
         return vv_b
 
-    def robot2world_v_all(self, v_all: Coord_all, position: Position):
+    def robot2world_v_all(self, v_all: Coord_all, position: Position) -> Coord_all:
 
         v1 = self.robot2world(v_all.v1, position)
         v2 = self.robot2world(v_all.v2, position)
@@ -245,7 +213,7 @@ class RobotCalc_pygeos:
 
         return v_all
 
-    def coord2bestAngle(self, vv: Coord, q_1_best, robot: Robot):
+    def coord2bestAngle(self, vv: Coord, q_1_best, robot: Robot) -> np.ndarray:
         vv = self.robot2world(vv, robot.position)
         q_2 = self.userIK(vv)
         len_q = q_2.shape[0]
@@ -271,7 +239,7 @@ class RobotCalc_pygeos:
             q_2_best = self.greedy_search(q_1_best, q_2_output)
         return q_2_best
 
-    def cv_joints_range(self, q_best: np.ndarray):
+    def cv_joints_range(self, q_best: np.ndarray) -> bool:
         if q_best.ndim == 1:
             q_best = q_best[None, :]
         joints_range = self.config.joints_range
@@ -287,7 +255,7 @@ class RobotCalc_pygeos:
                     return True
         return False
 
-    def cv_collision(self, q_a, q_b, robot_a: Robot, robot_b: Robot):
+    def cv_collision(self, q_a, q_b, robot_a: Robot, robot_b: Robot) -> bool:
 
         # % ------------------------- qa ------------------------- % #
         point = self.get_link_points(q_a, robot_a)
@@ -306,20 +274,7 @@ class RobotCalc_pygeos:
         ring12 = pgc.linearrings([point[12], point[13], point[14], point[15]])
 
         cpg_all = pgc.polygons(
-            [
-                ring1,
-                ring2,
-                ring3,
-                ring4,
-                ring5,
-                ring6,
-                ring7,
-                ring8,
-                ring9,
-                ring10,
-                ring11,
-                ring12,
-            ]
+            [ring1, ring2, ring3, ring4, ring5, ring6, ring7, ring8, ring9, ring10, ring11, ring12]
         )
 
         # % ------------------------- qb ------------------------- % #
@@ -327,16 +282,10 @@ class RobotCalc_pygeos:
         vb_all = self.robot2world_v_all(vb_all, robot_b.position)
 
         gmSegB1 = pgc.linestrings(
-            [
-                [vb_all.v2.xx, vb_all.v2.yy, vb_all.v2.zz],
-                [vb_all.v4.xx, vb_all.v4.yy, vb_all.v4.zz],
-            ]
+            [[vb_all.v2.xx, vb_all.v2.yy, vb_all.v2.zz], [vb_all.v4.xx, vb_all.v4.yy, vb_all.v4.zz]]
         )
         gmSegB2 = pgc.linestrings(
-            [
-                [vb_all.v4.xx, vb_all.v4.yy, vb_all.v4.zz],
-                [vb_all.v5.xx, vb_all.v5.yy, vb_all.v5.zz],
-            ]
+            [[vb_all.v4.xx, vb_all.v4.yy, vb_all.v4.zz], [vb_all.v5.xx, vb_all.v5.yy, vb_all.v5.zz]]
         )
 
         # % -------------------- intersection -------------------- % #
@@ -352,14 +301,12 @@ class RobotCalc_pygeos:
             strInter1 = inter1.astype(str)
             strInter2 = inter2.astype(str)
 
-            if np.all(strInter1 == "LINESTRING EMPTY") and np.all(
-                strInter2 == "LINESTRING EMPTY"
-            ):
+            if np.all(strInter1 == "LINESTRING EMPTY") and np.all(strInter2 == "LINESTRING EMPTY"):
                 return False
             else:
                 return True
 
-    def get_link_points(self, q, robot: Robot):
+    def get_link_points(self, q, robot: Robot) -> tuple:
         def get_normal_vec(v_f: Coord, v_e: Coord):
             v1_point = v_f.coordToNp()
             v2_point = v_e.coordToNp()

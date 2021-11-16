@@ -69,12 +69,8 @@ class moea_NSGA3_modified(ea.MoeaAlgorithm):
         population = self.population
         self.initialization()  # 初始化算法模板的一些动态参数
         # ===========================准备进化============================
-        uniformPoint, NIND = ea.crtup(
-            self.problem.M, population.sizes
-        )  # 生成在单位目标维度上均匀分布的参考点集
-        population.initChrom(
-            NIND
-        )  # 初始化种群染色体矩阵，此时种群规模将调整为uniformPoint点集的大小，initChrom函数会把种群规模给重置
+        uniformPoint, NIND = ea.crtup(self.problem.M, population.sizes)  # 生成在单位目标维度上均匀分布的参考点集
+        population.initChrom(NIND)  # 初始化种群染色体矩阵，此时种群规模将调整为uniformPoint点集的大小，initChrom函数会把种群规模给重置
         if self.problem.step != 0:
             population.Chrom = np.genfromtxt(
                 f"./log/chrom_{self.problem.step-1}.csv", delimiter=",", dtype="int32"
@@ -92,9 +88,7 @@ class moea_NSGA3_modified(ea.MoeaAlgorithm):
             offspring = population[ea.selecting(self.selFunc, population.sizes, NIND)]
             # 对选出的个体进行进化操作
             offspring.Chrom = self.recOper.do(offspring.Chrom)  # 重组
-            offspring.Chrom = self.mutOper.do(
-                offspring.Encoding, offspring.Chrom, offspring.Field
-            )  # 变异
+            offspring.Chrom = self.mutOper.do(offspring.Encoding, offspring.Chrom, offspring.Field)  # 变异
             # if gen % 100 == 0:
             #     self.call_aimFunc(offspring)  # 求进化后个体的目标函数值 (細緻化)
             # else:
