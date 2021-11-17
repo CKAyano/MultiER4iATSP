@@ -1,7 +1,7 @@
 Todo:
   ✔ 目標值取整 @done(21-11-17 12:18)
   ✔ 不分段跑結果 @done(21-11-17 12:19)
-  ☐ feasibleSol_count, draw
+  ✔ feasibleSol_count, draw @done(21-11-17 12:54)
 Archive:
   ✔ cache using decorate @done(21-11-17 12:06) @project(Todo)
   ✔ 6 joints priority: isOutOfRange --> greedySearch @done(21-07-31 14:05) @project(Todo)
