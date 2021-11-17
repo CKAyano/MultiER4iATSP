@@ -1,3 +1,4 @@
+from typing import List
 import geatpy as ea
 from moea_NSGA3_modified import moea_NSGA3_modified
 from ga_Problem import MyProblem
@@ -9,12 +10,13 @@ import matplotlib.pyplot as plt
 import gc
 
 
-CONFIG_PATH = "./config.yml"
-GEN_LIST = [2000, 500, 100]
-NIND = 50
+CONFIG_PATH: str = "./config.yml"
+# GEN_LIST: List = [2000, 500, 100]
+GEN_LIST: List = [3000]
+NIND: int = 50
 
 
-def del_result_contents():
+def del_result_contents() -> None:
     folder = "./Result"
     for filename in os.listdir(folder):
         file_path = os.path.join(folder, filename)
@@ -27,7 +29,20 @@ def del_result_contents():
             print("Failed to delete %s. Reason: %s" % (file_path, e))
 
 
-def save_pareto():
+def save_feasibleSol_figure(feasibleSol_list):
+    plot_x = [i + 1 for i in range(len(feasibleSol_list))]
+    plt.plot(plot_x, feasibleSol_list, "-r")
+    plt.title("Feasible Solution")
+    plt.xlabel("Generation")
+    plt.ylabel("Feasible Solution")
+    plt.savefig("./Result/feasibleSol.png")
+    plt.figure().clear()
+    plt.close()
+    plt.cla()
+    plt.clf()
+
+
+def save_pareto() -> None:
     objv_path = "./Result/ObjV.csv"
     objv = np.genfromtxt(objv_path, delimiter=",")
     plt.plot(objv[:, 1], objv[:, 0], ".r")
@@ -41,7 +56,7 @@ def save_pareto():
     plt.clf()
 
 
-def save_status(passTime_sec):
+def save_status(passTime_sec) -> None:
     file = open(f"./Result/info.txt", "a")
     file.write(f'\n{"number of generation:":<25}{GEN_LIST}\n')
     file.write(f'{"number of chromosome:":<25}{NIND}\n')
@@ -54,13 +69,14 @@ def save_status(passTime_sec):
     shutil.copytree("./log", "./Result/log")
 
 
-def main():
+def main() -> None:
     del_result_contents()
 
     num_slicing = len(GEN_LIST)
     passTime_sec = 0
+    feasibleSol_list = []
     for step in range(num_slicing):
-        problem = MyProblem(step, num_slicing, CONFIG_PATH)
+        problem = MyProblem(step, num_slicing, CONFIG_PATH, feasibleSol_list)
         Encoding = "P"
         Field = ea.crtfld(Encoding, problem.varTypes, problem.ranges, problem.borders)
         population = ea.Population(Encoding, Field, NIND)
@@ -77,8 +93,10 @@ def main():
             shutil.rmtree(f"./log/Step_{step}")
         shutil.copytree("./Result", f"./log/Step_{step}")
         passTime_sec += myAlgorithm.passTime
+        feasibleSol_list = problem.ccv3.feasibleSol_list
 
     save_pareto()
+    save_feasibleSol_figure(feasibleSol_list)
     save_status(passTime_sec)
     shutil.copytree("./Result", f"./[Result]/{datetime.datetime.now().strftime('%y%m%d-%H%M%S')}")
 

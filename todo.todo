@@ -1,6 +1,9 @@
 Todo:
-  ☐ cache using decorate
+  ✔ 目標值取整 @done(21-11-17 12:18)
+  ✔ 不分段跑結果 @done(21-11-17 12:19)
+  ☐ feasibleSol_count, draw
 Archive:
+  ✔ cache using decorate @done(21-11-17 12:06) @project(Todo)
   ✔ 6 joints priority: isOutOfRange --> greedySearch @done(21-07-31 14:05) @project(Todo)
   ✔ angleOffset() @done(21-07-31 14:05) @project(Todo)
   ✔ scoreOfTwoRobot() @done(21-07-31 14:05) @project(Todo)

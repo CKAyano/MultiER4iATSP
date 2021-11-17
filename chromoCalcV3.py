@@ -7,7 +7,9 @@ from typing import List, Tuple, Optional
 
 
 class ChromoCalcV3:
-    def __init__(self, config: Config, points: np.ndarray, step: int, num_slicing: int) -> None:
+    def __init__(
+        self, config: Config, points: np.ndarray, step: int, num_slicing: int, feasibleSol_list: List
+    ) -> None:
         try:
             if step >= num_slicing:
                 raise RuntimeError(f"'step'(={step}) should under {num_slicing}.")
@@ -22,6 +24,11 @@ class ChromoCalcV3:
         self.pz = points[:, 2]
         self.step = step
         self.num_slicing = num_slicing
+        if len(feasibleSol_list) == 0:
+            self.feasibleSol_count = 0
+        else:
+            self.feasibleSol_count = feasibleSol_list[-1]
+        self.feasibleSol_list = feasibleSol_list
         self.robots: list[Robot] = []
         position = [Position.LEFT, Position.RIGHT, Position.UP, Position.DOWN]
         for i in range(self.config.robots_count):
@@ -107,7 +114,7 @@ class ChromoCalcV3:
                 (self.robots[i].point_index, appendArray, -1)
             )  # [4, 5, -1, -1]
 
-    def interp_oneSeq(
+    def _get_interp_oneSeq(
         self, checkPoints_count: int, q_1_best: np.ndarray, q_2_best: np.ndarray
     ) -> np.ndarray:
 
@@ -141,7 +148,7 @@ class ChromoCalcV3:
 
         return angOffset_rbs, q_2_best_rbs
 
-    def get_robots_interp(
+    def _get_robots_interp(
         self, q_1_best_rbs: List[np.ndarray], gene_rbs: List[int]
     ) -> Optional[Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]]:
 
@@ -153,7 +160,9 @@ class ChromoCalcV3:
         interp_q_rbs = []
         for rb in range(self.config.robots_count):
             checkPoints_count = int(np.max(angOffset_rbs[rb]))
-            interp_q_rbs.append(self.interp_oneSeq(checkPoints_count, q_1_best_rbs[rb], q_2_best_rbs[rb]))
+            interp_q_rbs.append(
+                self._get_interp_oneSeq(checkPoints_count, q_1_best_rbs[rb], q_2_best_rbs[rb])
+            )
 
         return interp_q_rbs, q_2_best_rbs, angOffset_rbs
 
@@ -174,8 +183,8 @@ class ChromoCalcV3:
             else:
                 q_1_best = q_2_best
 
-            loc = [self.robots[rb].point_index[i] for rb in range(self.config.robots_count)]
-            _genTwoRobotInt = self.get_robots_interp(q_1_best, loc)
+            gene_rbs = [self.robots[rb].point_index[i] for rb in range(self.config.robots_count)]
+            _genTwoRobotInt = self._get_robots_interp(q_1_best, gene_rbs)
             if _genTwoRobotInt is None:
                 return None
             int_q, q_2_best, angOffset = _genTwoRobotInt
@@ -196,19 +205,19 @@ class ChromoCalcV3:
         return totalInt_q_rbs, totalAngle_rbs
 
     def slicingCheckPoint(
-        self, totalInt_q_rbs, levelOfSlicing: int, preInd
+        self, totalInt_q_rbs: List[np.ndarray], level: int, preInd
     ) -> Optional[Tuple[List[np.ndarray], bool, np.ndarray]]:
 
         slicing_count = 0
         int_count = totalInt_q_rbs[0].shape[0]
         if int_count == 0:
             return None
-        for i in range(levelOfSlicing):
+        for i in range(level):
             slicing_count = slicing_count + np.power(2, i)
         spacing = int_count // (slicing_count + 1)
         slicingInd = np.arange(0, int_count, spacing)
         lastEleFlag = int_count % (slicing_count + 1)
-        if lastEleFlag == 0 and levelOfSlicing == 1:
+        if lastEleFlag == 0 and level == 1:
             slicingInd = np.hstack((slicingInd, int_count - 1))
         checkSlicing = slicingInd.copy()
         for i in preInd:
@@ -271,7 +280,7 @@ class ChromoCalcV3:
         return False
 
     # @np_cache
-    def score_slicing(self, chromosome, logging) -> List[float, float]:
+    def score_slicing(self, chromosome, logging) -> Tuple[float, float]:
         # chromosome = np.array(hashable_chromosome)
         _interpolation = self.interpolation(chromosome)
         if _interpolation is not None:
@@ -299,6 +308,7 @@ class ChromoCalcV3:
                         msg = "Save, but all points on one side!"
                         print(msg)
                         logging.save_status(msg)
+                        self.feasibleSol_count += 1
                         break
                     preInd = np.hstack((preInd, checkPoint[3]))
                     if checkPoint[2] is not True:
@@ -322,6 +332,7 @@ class ChromoCalcV3:
                             msg = "Save!"
                             print(msg)
                             logging.save_status(msg)
+                            self.feasibleSol_count += 1
                             break
         else:
             totalAngle = 0
@@ -331,9 +342,11 @@ class ChromoCalcV3:
             logging.save_status(msg)
 
         score_dist = totalAngle + collisionScore
-        return [score_dist, std_rbs_angleOffset]
+        score_dist = score_dist // 5 * 5
+        std_rbs_angleOffset = std_rbs_angleOffset // 5 * 5
+        return score_dist, std_rbs_angleOffset
 
-    def score_step(self, chromosome, logging) -> List[float, float]:
+    def score_step(self, chromosome, logging) -> Tuple[float, float]:
         # chromosome = np.array(hashable_chromosome)
         _interpolation = self.interpolation_step(chromosome)
         if _interpolation is not None:
@@ -359,6 +372,7 @@ class ChromoCalcV3:
                     msg = "Save!"
                     print(msg)
                     logging.save_status(msg)
+                    self.feasibleSol_count += 1
         else:
             totalAngle = 0
             collisionScore = 90000000
@@ -366,6 +380,8 @@ class ChromoCalcV3:
             msg = "Out of Range!"
             print(msg)
             logging.save_status(msg)
-
+        self.feasibleSol_list.append(self.feasibleSol_count)
         score_dist = totalAngle + collisionScore
-        return [score_dist, std_rbs_angleOffset]
+        score_dist = score_dist // 5 * 5
+        std_rbs_angleOffset = std_rbs_angleOffset // 5 * 5
+        return score_dist, std_rbs_angleOffset
