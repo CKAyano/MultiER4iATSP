@@ -11,8 +11,8 @@ import gc
 
 
 CONFIG_PATH: str = "./config.yml"
-# GEN_LIST: List = [2000, 500, 100]
-GEN_LIST: List = [3000]
+GEN_LIST: List = [2000, 500, 100]
+# GEN_LIST: List = [3000]
 NIND: int = 50
 
 
@@ -57,13 +57,14 @@ def save_pareto() -> None:
 
 
 def save_status(passTime_sec) -> None:
-    file = open(f"./Result/info.txt", "a")
-    file.write(f'\n{"number of generation:":<25}{GEN_LIST}\n')
-    file.write(f'{"number of chromosome:":<25}{NIND}\n')
-    file.write(
-        f'\n{"pass time:":<25}' + f"{datetime.timedelta(seconds=passTime_sec)}({passTime_sec} secs)\n"
-    )
-    file.close()
+    with open("./Result/info.txt", "a") as file:
+        # file = open(f"./Result/info.txt", "a")
+        file.write(f'\n{"number of generation:":<25}{GEN_LIST}\n')
+        file.write(f'{"number of chromosome:":<25}{NIND}\n')
+        file.write(
+            f'\n{"pass time:":<25}' + f"{datetime.timedelta(seconds=passTime_sec)}({passTime_sec} secs)\n"
+        )
+    # file.close()
     shutil.copyfile("./output_point.csv", "./Result/output_point.csv")
     shutil.copyfile("./config.yml", "./Result/config.yml")
     shutil.copytree("./log", "./Result/log")

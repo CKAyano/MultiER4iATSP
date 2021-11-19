@@ -29,13 +29,14 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         self.step = step
         if step == 0:
             self.is_firstImp = True
-            file = open(f"./Result/info.txt", "w")
-            file.write(f'{"start time:":<25}' + f'{datetime.datetime.now().strftime("%y%m%d-%H%M%S")}\n')
-            file.write(f'{"number of robots:":<25}{robots_count}\n')
-            file.write(f'{"points range:":<25}{points_range}\n')
-            file.write(f'{"number of points:":<25}{points_count}\n')
-            file.write(f'{"link width:":<25}{link_width}\n')
-            file.close()
+            with open("./Result/info.txt", "w") as file:
+                # file = open(f"./Result/info.txt", "w")
+                file.write(f'{"start time:":<25}' + f'{datetime.datetime.now().strftime("%y%m%d-%H%M%S")}\n')
+                file.write(f'{"number of robots:":<25}{robots_count}\n')
+                file.write(f'{"points range:":<25}{points_range}\n')
+                file.write(f'{"number of points:":<25}{points_count}\n')
+                file.write(f'{"link width:":<25}{link_width}\n')
+            # file.close()
         else:
             self.is_firstImp = False
         self.logging = Collision_status(self.step)
