@@ -59,5 +59,6 @@ class MyProblem(ea.Problem):  # 继承Problem父类
             score_unif[chromo_id] = score_all[1]
             # print(f'\t{ccv3.scoreOfTwoRobot.cache_info()}')
         self.is_firstImp = False
+        self.ccv3.feasibleSol_list.append(self.ccv3.feasibleSol_count)
         pop.CV = np.hstack((score_dist - 1000000, score_unif - 10000))
         pop.ObjV = np.hstack((score_dist, score_unif))

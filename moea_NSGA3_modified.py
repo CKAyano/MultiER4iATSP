@@ -89,10 +89,7 @@ class moea_NSGA3_modified(ea.MoeaAlgorithm):
             # 对选出的个体进行进化操作
             offspring.Chrom = self.recOper.do(offspring.Chrom)  # 重组
             offspring.Chrom = self.mutOper.do(offspring.Encoding, offspring.Chrom, offspring.Field)  # 变异
-            # if gen % 100 == 0:
-            #     self.call_aimFunc(offspring)  # 求进化后个体的目标函数值 (細緻化)
-            # else:
-            self.call_aimFunc(offspring)  # 粗切
+            self.call_aimFunc(offspring)  # 求进化后个体的目标函数值
             # 重插入生成新一代种群
             population = self.reinsertion(population, offspring, NIND, uniformPoint)
         self.problem.logging.save_chrom(population.Chrom)
