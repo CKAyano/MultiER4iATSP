@@ -11,60 +11,63 @@ import gc
 
 
 CONFIG_PATH: str = "./config.yml"
-GEN_LIST: List = [2000, 500, 100]
-# GEN_LIST: List = [3000]
+# GEN_LIST: List = [3000, 800, 200]
+GEN_LIST: List = [3000]
 NIND: int = 50
 
 
 def del_result_contents() -> None:
     folder = "./Result"
     for filename in os.listdir(folder):
-        file_path = os.path.join(folder, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-        except Exception as e:
-            print("Failed to delete %s. Reason: %s" % (file_path, e))
+        if filename != "info.txt":
+            file_path = os.path.join(folder, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print("Failed to delete %s. Reason: %s" % (file_path, e))
 
 
-def save_feasibleSol_figure(feasibleSol_list):
+def save_feasibleSol_figure(feasibleSol_list) -> None:
     plot_x = [i + 1 for i in range(len(feasibleSol_list))]
-    plt.plot(plot_x, feasibleSol_list, "-r")
-    plt.title("Feasible Solution")
-    plt.xlabel("Generation")
-    plt.ylabel("Feasible Solution")
-    plt.savefig("./Result/feasibleSol.png")
-    plt.figure().clear()
+    fig, ax = plt.subplots()
+    ax.plot(plot_x, feasibleSol_list, "-r")
+    for i in GEN_LIST:
+        ax.axvline(x=i, color="gray", alpha=0.6)
+    ax.set_xlabel("Generation")
+    ax.set_ylabel("Feasible Solution")
+    fig.suptitle("Feasible Solution")
+    fig.savefig("./Result/feasibleSol.png")
     plt.close()
     plt.cla()
     plt.clf()
 
 
-def save_pareto() -> None:
-    objv_path = "./Result/ObjV.csv"
-    objv = np.genfromtxt(objv_path, delimiter=",")
-    plt.plot(objv[:, 1], objv[:, 0], ".r")
-    plt.title("Pareto Front")
-    plt.xlabel("std of every robots' angle changes")
-    plt.ylabel("total angle changes of every robots")
-    plt.savefig("./Result/pareto.png")
-    plt.figure().clear()
-    plt.close()
-    plt.cla()
-    plt.clf()
+def save_pareto(objv_path) -> None:
+    if os.path.exists(objv_path):
+        objv = np.genfromtxt(objv_path, delimiter=",")
+        plt.plot(objv[:, 1], objv[:, 0], ".r")
+        plt.title("Pareto Front")
+        plt.xlabel("std of every robots' angle changes")
+        plt.ylabel("total angle changes of every robots")
+        plt.savefig("./Result/pareto.png")
+        plt.close()
+        plt.cla()
+        plt.clf()
+    else:
+        with open("./Result/pareto.txt") as file:
+            file.write("No solution")
 
 
 def save_status(passTime_sec) -> None:
     with open("./Result/info.txt", "a") as file:
-        # file = open(f"./Result/info.txt", "a")
         file.write(f'\n{"number of generation:":<25}{GEN_LIST}\n')
         file.write(f'{"number of chromosome:":<25}{NIND}\n')
         file.write(
             f'\n{"pass time:":<25}' + f"{datetime.timedelta(seconds=passTime_sec)}({passTime_sec} secs)\n"
         )
-    # file.close()
     shutil.copyfile("./output_point.csv", "./Result/output_point.csv")
     shutil.copyfile("./config.yml", "./Result/config.yml")
     shutil.copytree("./log", "./Result/log")
@@ -86,8 +89,6 @@ def main() -> None:
         myAlgorithm.MAXGEN = GEN_LIST[step]
         myAlgorithm.verbose = True
         myAlgorithm.drawing = 0
-        # if step + 1 == num_slicing:
-        #     myAlgorithm.drawing = 1
         [NDSet, population] = myAlgorithm.run()
         NDSet.save()
         if os.path.exists(f"./log/Step_{step}"):
@@ -95,20 +96,13 @@ def main() -> None:
         shutil.copytree("./Result", f"./log/Step_{step}")
         passTime_sec += myAlgorithm.passTime
         feasibleSol_list = problem.ccv3.feasibleSol_list
+        del_result_contents()
 
-    save_pareto()
+    save_pareto("./Result/ObjV.csv")
     save_feasibleSol_figure(feasibleSol_list)
     save_status(passTime_sec)
     shutil.copytree("./Result", f"./[Result]/{datetime.datetime.now().strftime('%y%m%d-%H%M%S')}")
 
 
-def del_memory():
-    for name in dir():
-        del globals()[name]
-    gc.collect()
-
-
 if __name__ == "__main__":
-    # for _ in range(6):
     main()
-    # del_memory()

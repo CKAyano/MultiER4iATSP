@@ -72,8 +72,17 @@ class ChromoCalcV3:
 
         self._throw_path(Position.LEFT, Position.RIGHT)
         self._throw_path(Position.RIGHT, Position.LEFT)
-        self._throw_path(Position.UP, Position.DOWN)
-        self._throw_path(Position.DOWN, Position.UP)
+        if self.config.robots_count != 2:
+            self._throw_path(Position.LEFT, Position.UP)
+            self._throw_path(Position.LEFT, Position.DOWN)
+            self._throw_path(Position.RIGHT, Position.UP)
+            self._throw_path(Position.RIGHT, Position.DOWN)
+            self._throw_path(Position.UP, Position.DOWN)
+            self._throw_path(Position.UP, Position.RIGHT)
+            self._throw_path(Position.UP, Position.LEFT)
+            self._throw_path(Position.DOWN, Position.UP)
+            self._throw_path(Position.DOWN, Position.LEFT)
+            self._throw_path(Position.DOWN, Position.RIGHT)
 
         chromo = self.robots[0].robot_path
         for i in range(self.config.robots_count - 1):
