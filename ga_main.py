@@ -57,7 +57,7 @@ def save_pareto(objv_path) -> None:
         plt.cla()
         plt.clf()
     else:
-        with open("./Result/pareto.txt") as file:
+        with open("./Result/pareto.txt", "w") as file:
             file.write("No solution")
 
 

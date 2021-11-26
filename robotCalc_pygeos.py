@@ -15,15 +15,16 @@ class RobotCalc_pygeos:
     def __init__(self, config: Config) -> None:
         self.config = config
 
-    def userIK(self, vv: Coord) -> np.ndarray:
-        def angleAdj(ax):
-            for ii in range(len(ax)):
-                while ax[ii] > np.pi:
-                    ax[ii] = ax[ii] - np.pi * 2
+    def angleAdj(self, ax):
+        for ii in range(len(ax)):
+            while ax[ii] > np.pi:
+                ax[ii] = ax[ii] - np.pi * 2
 
-                while ax[ii] < -np.pi:
-                    ax[ii] = ax[ii] + np.pi * 2
-            return ax
+            while ax[ii] < -np.pi:
+                ax[ii] = ax[ii] + np.pi * 2
+        return ax
+
+    def userIK(self, vv: Coord) -> np.ndarray:
 
         px = vv.xx
         py = vv.yy
@@ -81,9 +82,9 @@ class RobotCalc_pygeos:
                 )
                 q2[numq2] = q23[numq2] - q3[ii]
 
-        q1 = angleAdj(q1)
-        q2 = angleAdj(q2)
-        q3 = angleAdj(q3)
+        q1 = self.angleAdj(q1)
+        q2 = self.angleAdj(q2)
+        q3 = self.angleAdj(q3)
 
         q1 = np.array([q1[0], q1[0], q1[1], q1[1]])
         q3 = np.array([q3[0], q3[1], q3[0], q3[1]])
@@ -185,21 +186,41 @@ class RobotCalc_pygeos:
 
     def robot2world(self, vv_a: Coord, position: Position) -> Coord:
         vv_b = Coord(0, 0, 0)
-        if position == Position.LEFT:
-            vv_b = vv_a
-        elif position == Position.RIGHT:
-            vv_b.xx = -vv_a.xx + self.config.baseX_offset
-            vv_b.yy = -vv_a.yy
-            vv_b.zz = vv_a.zz
-        elif position == Position.UP:
-            vv_b.xx = self.config.baseY_offset - vv_a.yy
-            vv_b.yy = vv_a.xx - self.config.baseX_offset / 2
-            vv_b.zz = vv_a.zz
-        elif position == Position.DOWN:
-            vv_b.xx = self.config.baseY_offset + vv_a.yy
-            vv_b.yy = self.config.baseX_offset / 2 - vv_a.xx
-            vv_b.zz = vv_a.zz
-        return vv_b
+
+        if self.config.mode == 1:
+            if position == Position.LEFT:
+                vv_b = vv_a
+            elif position == Position.RIGHT:
+                vv_b.xx = -vv_a.xx + self.config.baseX_offset
+                vv_b.yy = -vv_a.yy
+                vv_b.zz = vv_a.zz
+            elif position == Position.UP:
+                vv_b.xx = self.config.baseY_offset - vv_a.yy
+                vv_b.yy = vv_a.xx - self.config.baseX_offset / 2
+                vv_b.zz = vv_a.zz
+            elif position == Position.DOWN:
+                vv_b.xx = self.config.baseY_offset + vv_a.yy
+                vv_b.yy = self.config.baseX_offset / 2 - vv_a.xx
+                vv_b.zz = vv_a.zz
+            return vv_b
+
+        if self.config.mode == 2:
+            vv_a_list = [vv_a.xx, vv_a.yy, vv_a.zz]
+            if position == Position.LEFT:
+                i = 0
+            elif position == Position.RIGHT:
+                i = 1
+            elif position == Position.UP:
+                i = 2
+            elif position == Position.DOWN:
+                i = 3
+            h_02 = self.config.mat_transl(vv_a_list).dot(self.config.h01_rbs[2][i])
+            h_12 = self.config.h01_rbs[1][i].dot(h_02)
+            vv_b.xx = h_12[0, 3]
+            vv_b.yy = h_12[1, 3]
+            vv_b.zz = h_12[2, 3]
+            return vv_b
+        raise RuntimeError("wrong config mode")
 
     def robot2world_v_all(self, v_all: Coord_all, position: Position) -> Coord_all:
 
@@ -237,21 +258,30 @@ class RobotCalc_pygeos:
             return q_2_output
         else:
             q_2_best = self.greedy_search(q_1_best, q_2_output)
+            # q_2_best_DG = np.degrees(q_2_best)
         return q_2_best
 
     def cv_joints_range(self, q_best: np.ndarray) -> bool:
-        if q_best.ndim == 1:
-            q_best = q_best[None, :]
+        q_best_cp = q_best.copy()
+        if q_best_cp.ndim == 1:
+            q_best_cp = q_best_cp[None, :]
         joints_range = self.config.joints_range
         numOfAxis = joints_range.shape[0]
-        isQNan = np.isnan(q_best)
+        isQNan = np.isnan(q_best_cp)
         if np.any(isQNan):
             return True
         else:
+            q_best_cp[:, 2] = -(q_best_cp[:, 2] + q_best_cp[:, 1])
+            for i in range(q_best_cp.shape[0]):
+                q_best_cp[i, :] = self.angleAdj(q_best_cp[i, :])
             for i in range(numOfAxis):
-                condition_ql = q_best[:, i] < joints_range[i, 0]
-                condition_qu = q_best[:, i] > joints_range[i, 1]
+                condition_ql = q_best_cp[:, i] < joints_range[i, 0]
+                condition_qu = q_best_cp[:, i] > joints_range[i, 1]
                 if np.any(condition_ql) or np.any(condition_qu):
+                    which_L = q_best_cp[condition_ql, :]
+                    which_L_DG = np.degrees(which_L)
+                    which_U = q_best_cp[condition_qu, :]
+                    which_U_DG = np.degrees(which_U)
                     return True
         return False
 

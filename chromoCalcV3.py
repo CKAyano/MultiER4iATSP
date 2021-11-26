@@ -70,11 +70,15 @@ class ChromoCalcV3:
 
         self.set_robotsPath(chromosome)
 
-        self._throw_path(Position.LEFT, Position.RIGHT)
-        self._throw_path(Position.RIGHT, Position.LEFT)
-        if self.config.robots_count != 2:
+        if self.config.robots_count == 2:
+            self._throw_path(Position.LEFT, Position.RIGHT)
+            self._throw_path(Position.RIGHT, Position.LEFT)
+
+        if self.config.robots_count > 2:
+            self._throw_path(Position.LEFT, Position.RIGHT)
             self._throw_path(Position.LEFT, Position.UP)
             self._throw_path(Position.LEFT, Position.DOWN)
+            self._throw_path(Position.RIGHT, Position.LEFT)
             self._throw_path(Position.RIGHT, Position.UP)
             self._throw_path(Position.RIGHT, Position.DOWN)
             self._throw_path(Position.UP, Position.DOWN)
@@ -358,7 +362,7 @@ class ChromoCalcV3:
 
             if self.is_outOfRange(totalInt_q):
                 collisionScore = 90000000
-                msg = "Out of Range!"
+                msg = "Out of Range! _ interp"
                 print(msg)
                 logging.save_status(msg)
             else:
@@ -377,7 +381,7 @@ class ChromoCalcV3:
             totalAngle = 0
             collisionScore = 90000000
             std_rbs_angleOffset = 10000
-            msg = "Out of Range!"
+            msg = "Out of Range! _ None"
             print(msg)
             logging.save_status(msg)
         # self.feasibleSol_list.append(self.feasibleSol_count)
