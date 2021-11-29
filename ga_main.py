@@ -30,6 +30,19 @@ def del_result_contents() -> None:
                 print("Failed to delete %s. Reason: %s" % (file_path, e))
 
 
+def del_log_contents() -> None:
+    folder = "./log"
+    for filename in os.listdir(folder):
+        file_path = os.path.join(folder, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print("Failed to delete %s. Reason: %s" % (file_path, e))
+
+
 def save_feasibleSol_figure(feasibleSol_list) -> None:
     plot_x = [i + 1 for i in range(len(feasibleSol_list))]
     fig, ax = plt.subplots()
@@ -75,6 +88,7 @@ def save_status(passTime_sec) -> None:
 
 def main() -> None:
     del_result_contents()
+    del_log_contents()
 
     num_slicing = len(GEN_LIST)
     passTime_sec = 0
@@ -96,7 +110,8 @@ def main() -> None:
         shutil.copytree("./Result", f"./log/Step_{step}")
         passTime_sec += myAlgorithm.passTime
         feasibleSol_list = problem.ccv3.feasibleSol_list
-        del_result_contents()
+        if step != num_slicing - 1:
+            del_result_contents()
 
     save_pareto("./Result/ObjV.csv")
     save_feasibleSol_figure(feasibleSol_list)
