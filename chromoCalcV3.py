@@ -24,10 +24,10 @@ class ChromoCalcV3:
         self.pz = points[:, 2]
         self.step = step
         self.num_slicing = num_slicing
-        if len(feasibleSol_list) == 0:
-            self.feasibleSol_count = 0
-        else:
-            self.feasibleSol_count = feasibleSol_list[-1]
+        # if len(feasibleSol_list) == 0:
+        self.feasibleSol_count = 0
+        # else:
+        #     self.feasibleSol_count = feasibleSol_list[-1]
         self.feasibleSol_list = feasibleSol_list
         self.robots: list[Robot] = []
         position = [Position.LEFT, Position.RIGHT, Position.UP, Position.DOWN]

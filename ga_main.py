@@ -11,8 +11,8 @@ import gc
 
 
 CONFIG_PATH: str = "./config.yml"
-# GEN_LIST: List = [3000, 800, 200]
-GEN_LIST: List = [3000]
+# GEN_LIST: List = [5000, 1000, 500]
+GEN_LIST: List = [5000]
 NIND: int = 50
 
 

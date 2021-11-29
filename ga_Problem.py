@@ -45,6 +45,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
 
     def aimFunc(self, pop):  # 目标函数
         # population = pop.Chrom
+        self.ccv3.feasibleSol_count = 0
         nind = pop.sizes
 
         score_dist = np.ones((nind, 1))
