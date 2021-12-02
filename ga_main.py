@@ -44,9 +44,11 @@ def del_log_contents() -> None:
 
 
 def save_feasibleSol_figure(feasibleSol_list) -> None:
+    np.savetxt("./Result/feasibleSol.csv", feasibleSol_list, delimiter=",")
     plot_x = [i + 1 for i in range(len(feasibleSol_list))]
     fig, ax = plt.subplots()
-    ax.plot(plot_x, feasibleSol_list, "-r")
+    list_idx = np.where(np.array(plot_x) % 100 == 0)
+    ax.plot(np.array(plot_x)[list_idx], np.array(feasibleSol_list)[list_idx], "o-r")
     for i in GEN_LIST:
         ax.axvline(x=i, color="gray", alpha=0.6)
     ax.set_xlabel("Generation")
