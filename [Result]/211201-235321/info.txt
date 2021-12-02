@@ -1,0 +1,10 @@
+start time:              211129-130045
+number of robots:        2
+points range:            [[100, 800], [-300, 300], [50, 50]]
+number of points:        100
+link width:              200
+
+number of generation:    [5000]
+number of chromosome:    50
+
+pass time:               2 days, 10:52:27.280025(211947.28002500534 secs)
