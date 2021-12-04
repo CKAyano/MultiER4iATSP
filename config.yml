@@ -1,5 +1,7 @@
 robots_count: 2
 
+replace_chromo: False
+
 mode: 1
 
 points_range:
