@@ -1,6 +1,7 @@
 robots_count: 2
 
-replace_chromo: False
+replace_chromo: True
+adj_chromo: False
 
 mode: 1
 

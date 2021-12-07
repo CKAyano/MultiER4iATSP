@@ -55,7 +55,8 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         for chromo_id in range(nind):
             # aim1 總加工時間最短
             if self.is_firstImp:
-                self.ccv3.adj_chromo(pop.Chrom[chromo_id, :], chromo_id, pop)
+                if self.ccv3.config.adj_chromo:
+                    self.ccv3.adj_chromo(pop.Chrom[chromo_id, :], chromo_id, pop)
             score_all = self.ccv3.score_step(pop.Chrom[chromo_id, :], self.logging)
             score_dist[chromo_id] = score_all[0]
             # aim2 手臂點分佈最平均
