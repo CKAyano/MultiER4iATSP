@@ -13,6 +13,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
 
         robots_count = config.robots_count
         replace_chromo = config.replace_chromo
+        adj_chromo = config.adj_chromo
         points_range = config.points_range
         link_width = config.link_width
 
@@ -35,6 +36,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                 file.write(f'{"start time:":<25}' + f'{datetime.datetime.now().strftime("%y%m%d-%H%M%S")}\n')
                 file.write(f'{"number of robots:":<25}{robots_count}\n')
                 file.write(f'{"replace chromosome:":<25}{replace_chromo}\n')
+                file.write(f'{"adjust chromosome:":<25}{adj_chromo}\n')
                 file.write(f'{"points range:":<25}{points_range}\n')
                 file.write(f'{"number of points:":<25}{points_count}\n')
                 file.write(f'{"link width:":<25}{link_width}\n')
