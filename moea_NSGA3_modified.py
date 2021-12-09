@@ -105,6 +105,8 @@ class moea_NSGA3_modified(ea.MoeaAlgorithm):
             offspring.Chrom = self.mutOper.do(offspring.Encoding, offspring.Chrom, offspring.Field)  # 变异
             self.call_aimFunc(offspring)  # 求进化后个体的目标函数值
             # TODO 每1000代存
+            if gen % 1000 == 0:
+                np.savetxt(f"chrom_gen_{gen}.csv", population.Chrom, delimiter=",")
             if self.problem.ccv3.config.replace_chromo:
                 self.problem.ccv3.replace_chromosome(offspring, 10)
             # 重插入生成新一代种群
