@@ -45,6 +45,18 @@ class moea_NSGA3_modified(ea.MoeaAlgorithm):
         else:
             raise RuntimeError("编码方式必须为" "BG" "、" "RI" "或" "P" ".")
 
+    def custom_initChrom(self, population):
+        rs = np.random.RandomState(np.random.MT19937(np.random.SeedSequence(123456789)))
+        lb = self.problem.ranges[0, 0]
+        ub = self.problem.ranges[1, 0]
+        col_count = population.Chrom.shape[1]
+        chroms = np.zeros((0, col_count), dtype="int32")
+        for i in range(population.sizes):
+            # chrom = rs.randint(lb, ub + 1, col_count, dtype="int32")
+            chrom = rs.choice(range(lb, ub + 1), col_count, replace=False)
+            chroms = np.vstack((chroms, chrom))
+        population.Chrom = chroms
+
     def reinsertion(self, population, offspring, NUM, uniformPoint):
 
         """
@@ -71,6 +83,7 @@ class moea_NSGA3_modified(ea.MoeaAlgorithm):
         # ===========================准备进化============================
         uniformPoint, NIND = ea.crtup(self.problem.M, population.sizes)  # 生成在单位目标维度上均匀分布的参考点集
         population.initChrom(NIND)  # 初始化种群染色体矩阵，此时种群规模将调整为uniformPoint点集的大小，initChrom函数会把种群规模给重置
+        self.custom_initChrom(population)
         if self.problem.step != 0:
             population.Chrom = np.genfromtxt(
                 f"./log/chrom_{self.problem.step-1}.csv", delimiter=",", dtype="int32"
