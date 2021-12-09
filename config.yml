@@ -1,7 +1,8 @@
 robots_count: 2
 
-replace_chromo: True
+replace_chromo: False
 adj_chromo: False
+custom_initChrom: True
 
 mode: 1
 

@@ -83,7 +83,8 @@ class moea_NSGA3_modified(ea.MoeaAlgorithm):
         # ===========================准备进化============================
         uniformPoint, NIND = ea.crtup(self.problem.M, population.sizes)  # 生成在单位目标维度上均匀分布的参考点集
         population.initChrom(NIND)  # 初始化种群染色体矩阵，此时种群规模将调整为uniformPoint点集的大小，initChrom函数会把种群规模给重置
-        self.custom_initChrom(population)
+        if self.problem.ccv3.config.custom_initChrom:
+            self.custom_initChrom(population)
         if self.problem.step != 0:
             population.Chrom = np.genfromtxt(
                 f"./log/chrom_{self.problem.step-1}.csv", delimiter=",", dtype="int32"
