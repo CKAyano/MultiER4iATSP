@@ -7,7 +7,7 @@ import shutil
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import gc
+from pathlib import Path
 
 
 CONFIG_PATH: str = "./config.yml"
@@ -92,6 +92,7 @@ def main() -> None:
     del_result_contents()
     del_log_contents()
 
+    Path(f"./Result/Chrom_per1000").mkdir(parents=True, exist_ok=True)
     num_slicing = len(GEN_LIST)
     passTime_sec = 0
     feasibleSol_list = []
