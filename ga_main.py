@@ -11,7 +11,7 @@ from pathlib import Path
 import yaml
 
 
-CONFIG_PATH: str = "./config.yml"
+CONFIG_PATH: str = "./CONFIG.yml"
 with open("./GA_PARAM.yml", "r") as ga_param_file:
     ga_param = yaml.load(ga_param_file)
 # GEN_LIST: List = [5000, 1000, 500]
