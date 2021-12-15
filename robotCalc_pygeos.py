@@ -187,40 +187,40 @@ class RobotCalc_pygeos:
     def robot2world(self, vv_a: Coord, position: Position) -> Coord:
         vv_b = Coord(0, 0, 0)
 
-        if self.config.mode == 1:
-            if position == Position.LEFT:
-                vv_b = vv_a
-            elif position == Position.RIGHT:
-                vv_b.xx = -vv_a.xx + self.config.baseX_offset
-                vv_b.yy = -vv_a.yy
-                vv_b.zz = vv_a.zz
-            elif position == Position.UP:
-                vv_b.xx = self.config.baseY_offset - vv_a.yy
-                vv_b.yy = vv_a.xx - self.config.baseX_offset / 2
-                vv_b.zz = vv_a.zz
-            elif position == Position.DOWN:
-                vv_b.xx = self.config.baseY_offset + vv_a.yy
-                vv_b.yy = self.config.baseX_offset / 2 - vv_a.xx
-                vv_b.zz = vv_a.zz
-            return vv_b
+        # if self.config.mode == 1:
+        if position == Position.LEFT:
+            vv_b = vv_a
+        elif position == Position.RIGHT:
+            vv_b.xx = -vv_a.xx + self.config.baseX_offset
+            vv_b.yy = -vv_a.yy
+            vv_b.zz = vv_a.zz
+        elif position == Position.UP:
+            vv_b.xx = self.config.baseY_offset - vv_a.yy
+            vv_b.yy = vv_a.xx - self.config.baseX_offset / 2
+            vv_b.zz = vv_a.zz
+        elif position == Position.DOWN:
+            vv_b.xx = self.config.baseY_offset + vv_a.yy
+            vv_b.yy = self.config.baseX_offset / 2 - vv_a.xx
+            vv_b.zz = vv_a.zz
+        return vv_b
 
-        if self.config.mode == 2:
-            vv_a_list = [vv_a.xx, vv_a.yy, vv_a.zz]
-            if position == Position.LEFT:
-                i = 0
-            elif position == Position.RIGHT:
-                i = 1
-            elif position == Position.UP:
-                i = 2
-            elif position == Position.DOWN:
-                i = 3
-            h_02 = self.config.mat_transl(vv_a_list).dot(self.config.h01_rbs[2][i])
-            h_12 = self.config.h01_rbs[1][i].dot(h_02)
-            vv_b.xx = h_12[0, 3]
-            vv_b.yy = h_12[1, 3]
-            vv_b.zz = h_12[2, 3]
-            return vv_b
-        raise RuntimeError("wrong config mode")
+        # if self.config.mode == 2:
+        #     vv_a_list = [vv_a.xx, vv_a.yy, vv_a.zz]
+        #     if position == Position.LEFT:
+        #         i = 0
+        #     elif position == Position.RIGHT:
+        #         i = 1
+        #     elif position == Position.UP:
+        #         i = 2
+        #     elif position == Position.DOWN:
+        #         i = 3
+        #     h_02 = self.config.mat_transl(vv_a_list).dot(self.config.h01_rbs[2][i])
+        #     h_12 = self.config.h01_rbs[1][i].dot(h_02)
+        #     vv_b.xx = h_12[0, 3]
+        #     vv_b.yy = h_12[1, 3]
+        #     vv_b.zz = h_12[2, 3]
+        #     return vv_b
+        # raise RuntimeError("wrong config mode")
 
     def robot2world_v_all(self, v_all: Coord_all, position: Position) -> Coord_all:
 

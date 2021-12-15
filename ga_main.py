@@ -8,12 +8,15 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
+import yaml
 
 
 CONFIG_PATH: str = "./config.yml"
+with open("./GA_PARAM.yml", "r") as ga_param_file:
+    ga_param = yaml.load(ga_param_file)
 # GEN_LIST: List = [5000, 1000, 500]
-GEN_LIST: List = [5000]
-NIND: int = 50
+GEN_LIST: List = ga_param["GEN_LIST"]
+NIND: int = ga_param["NIND"]
 
 
 def del_result_contents() -> None:
