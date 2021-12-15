@@ -66,7 +66,8 @@ class Config:
         with open(config_path, "r") as config_file:
             config = yaml.load(config_file)
         self.adj_chromo = config["adj_chromo"]
-        self.replace_chromo = config["replace_chromo"]
+        self.replace_chromo = config["replace_chromo"][0]
+        self.replace_chromo_dist = config["replace_chromo"][1]
         self.custom_initChrom = config["custom_initChrom"]
         self.mode = config["mode"]
         self.robots_count = config["robots_count"]
