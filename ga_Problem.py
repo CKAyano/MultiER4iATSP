@@ -5,6 +5,7 @@ from status_logging import Collision_status
 import datetime
 import yaml
 from robotInfo import Config
+from pathlib import Path
 
 
 class MyProblem(ea.Problem):  # 继承Problem父类
@@ -30,6 +31,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         lbin = [1] * Dim  # 决策变量下边界（0表示不包含该变量的下边界，1表示包含）
         ubin = [1] * Dim  # 决策变量上边界（0表示不包含该变量的上边界，1表示包含）
         self.step = step
+        Path("./Result/Chrom_per1000").mkdir(parents=True, exist_ok=True)
         if step == 0:
             self.is_firstImp = True
             with open("./Result/info.txt", "w") as file:
