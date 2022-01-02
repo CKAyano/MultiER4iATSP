@@ -1,4 +1,4 @@
-start time:              211216-160302
+start time:              211229-111409
 number of robots:        2
 replace chromosome:      True
 adjust chromosome:       True
@@ -10,4 +10,4 @@ link width:              200
 number of generation:    [10000]
 number of chromosome:    50
 
-pass time:               3 days, 7:08:37.625474(284917.62547397614 secs)
+pass time:               3 days, 23:08:42.420883(342522.42088341713 secs)
