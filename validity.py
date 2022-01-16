@@ -1,3 +1,4 @@
+from email import header
 import numpy as np
 from chromoCalcV3 import ChromoCalcV3
 import robotCalc_Geo3D as rcg
@@ -11,6 +12,7 @@ import os
 import imageio
 import natsort
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 class DrawRobots:
@@ -150,14 +152,17 @@ class DrawRobots:
 
 
 def c_measurement(obj_a_all: np.ndarray, obj_b_all: np.ndarray) -> float:
-    obj_a_count = obj_a_all.shape[0]
+    # obj_a_count = obj_a_all.shape[0]
     obj_b_count = obj_b_all.shape[0]
     dominate_count = 0
-    for obj_a in obj_a_all:
-        for obj_b in obj_b_count:
+    for obj_b in obj_b_all:
+        for obj_a in obj_a_all:
             is_dominate = ChromoCalcV3.dominates(obj_a, obj_b)
             if is_dominate:
                 dominate_count += 1
+                break
+    preferment_value = dominate_count / obj_b_count
+    return preferment_value
 
 
 def main():
@@ -168,5 +173,44 @@ def main():
     dr.draw_manuf_route()
 
 
+def main_CMeasurement():
+    def plot_vs(obj_rep, obj_noRep, value_rep, value_noRep, rep, noRep):
+        (p1,) = plt.plot(obj_rep[:, 1], obj_rep[:, 0], "ro")
+        (p2,) = plt.plot(obj_noRep[:, 1], obj_noRep[:, 0], "bo")
+        plt.xlabel("std of every robots' angle changes")
+        plt.ylabel("total angle changes of every robots")
+        plt.legend([p1, p2], [f"rep, vs no_rep={value_rep}", f"no_rep, vs rep={value_noRep}"])
+        plt.title(f"{rep}(rep) vs {noRep}(noRep)")
+
+    folder_noRep_path = "./[Result]/noRep_10000Gen_noSlice"
+    folder_rep_path = "./[Result]/rep_10000Gen_noSlice"
+
+    folder_noRep_list = os.listdir(folder_noRep_path)
+    folder_rep_list = os.listdir(folder_rep_path)
+    for noRep in folder_noRep_list:
+        noRep_vs_rep = np.zeros((1, 0))
+        rep_vs_noRep = np.zeros((1, 0))
+        obj_noRep_path = f"{folder_noRep_path}/{noRep}/ObjV.csv"
+        obj_noRep = np.genfromtxt(obj_noRep_path, delimiter=",")
+        obj_noRep = np.unique(obj_noRep, axis=0)
+        # if obj_noRep.shape[0] >= 20:
+        for rep in folder_rep_list:
+            obj_rep_path = f"{folder_rep_path}/{rep}/ObjV.csv"
+            obj_rep = np.genfromtxt(obj_rep_path, delimiter=",")
+            obj_rep = np.unique(obj_rep, axis=0)
+            # if obj_rep.shape[0] >= 20:
+            c_value_rep = c_measurement(obj_rep, obj_noRep)
+            c_value_noRep = c_measurement(obj_noRep, obj_rep)
+            noRep_vs_rep = np.append(noRep_vs_rep, c_value_noRep)
+            rep_vs_noRep = np.append(rep_vs_noRep, c_value_rep)
+
+            plot_vs(obj_rep, obj_noRep, c_value_rep, c_value_noRep, rep, noRep)
+            plt.savefig(f"./[Result]/c_measurement/{rep}_vs_{noRep}.png")
+            plt.close()
+            plt.cla()
+            plt.clf()
+
+
 if __name__ == "__main__":
-    main()
+    # main()
+    main_CMeasurement()
