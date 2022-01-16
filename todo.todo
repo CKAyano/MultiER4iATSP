@@ -1,6 +1,6 @@
 Todo:
-  ☐ seed(0)畫圖
-  ☐ 每1000代存chromo(砍之前存)
+  ✔ seed(0)畫圖 @done(22-01-12 13:39)
+  ✔ 每1000代存chromo(砍之前存) @done(22-01-12 13:39)
 Archive:
   ✔ 目標值取整 @done(21-11-17 12:18) @project(Todo)
   ✔ 不分段跑結果 @done(21-11-17 12:19) @project(Todo)

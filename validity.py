@@ -149,6 +149,17 @@ class DrawRobots:
             plt.show()
 
 
+def c_measurement(obj_a_all: np.ndarray, obj_b_all: np.ndarray) -> float:
+    obj_a_count = obj_a_all.shape[0]
+    obj_b_count = obj_b_all.shape[0]
+    dominate_count = 0
+    for obj_a in obj_a_all:
+        for obj_b in obj_b_count:
+            is_dominate = ChromoCalcV3.dominates(obj_a, obj_b)
+            if is_dominate:
+                dominate_count += 1
+
+
 def main():
     folderName = "50_points/211111-215630"
     dr = DrawRobots(folderName)

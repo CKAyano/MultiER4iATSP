@@ -34,7 +34,8 @@ class ChromoCalcV3:
         for i in range(self.config.robots_count):
             self.robots.append(Robot(i, position[i]))
 
-    def __dominates(self, obj_self: np.ndarray, obj_other: np.ndarray):
+    @staticmethod
+    def dominates(obj_self: np.ndarray, obj_other: np.ndarray):
         better_at_least_one_obj = obj_self[0] < obj_other[0] or obj_self[1] < obj_other[1]
         better_or_equal_for_all_obj = obj_self[0] <= obj_other[0] and obj_self[1] <= obj_other[1]
         return better_or_equal_for_all_obj and better_at_least_one_obj
@@ -55,9 +56,9 @@ class ChromoCalcV3:
         for i_self, self_chrom in enumerate(chromos):
             dominated_sol.append(set())
             for i_other, other_chrom in enumerate(chromos):
-                if self.__dominates(obj_chromos[i_self, :], obj_chromos[i_other, :]):
+                if self.dominates(obj_chromos[i_self, :], obj_chromos[i_other, :]):
                     dominated_sol[i_self].add((i_other, tuple(other_chrom)))
-                elif self.__dominates(obj_chromos[i_other, :], obj_chromos[i_self, :]):
+                elif self.dominates(obj_chromos[i_other, :], obj_chromos[i_self, :]):
                     n[i_self] += 1
             if n[i_self] == 0:
                 fonts[0].append((i_self, self_chrom))
