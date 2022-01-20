@@ -2,6 +2,7 @@ import numpy as np
 from robotCalc_pygeos import RobotCalc_pygeos, Coord
 from robotInfo import Config, Robot, Position
 from typing import List, Tuple, Optional
+import functools
 
 # from caching import np_cache
 
@@ -35,15 +36,18 @@ class ChromoCalcV3:
             self.robots.append(Robot(i, position[i]))
 
     @staticmethod
-    def dominates(obj_self: np.ndarray, obj_other: np.ndarray):
+    def _dominates(obj_self: np.ndarray, obj_other: np.ndarray) -> bool:
         better_at_least_one_obj = obj_self[0] < obj_other[0] or obj_self[1] < obj_other[1]
         better_or_equal_for_all_obj = obj_self[0] <= obj_other[0] and obj_self[1] <= obj_other[1]
         return better_or_equal_for_all_obj and better_at_least_one_obj
 
+    def a_dominates_b(self, obj_a, obj_b):
+        return self._dominates(obj_a, obj_b)
+
     # def __arreq_in_list(self, arr, list_arrays):
     #     return next((True for elem in list_arrays if np.array_equal(elem, arr)), False)
 
-    def __fast_nondominated_sorting(self, pop):
+    def _fast_nondominated_sorting(self, pop):
         chromos = pop.Chrom.copy()
         for rb in range(self.config.robots_count - 1):
             chromos = np.where(chromos != self.robots[rb + 1].delimiter, chromos, self.robots[0].delimiter)
@@ -56,9 +60,9 @@ class ChromoCalcV3:
         for i_self, self_chrom in enumerate(chromos):
             dominated_sol.append(set())
             for i_other, other_chrom in enumerate(chromos):
-                if self.dominates(obj_chromos[i_self, :], obj_chromos[i_other, :]):
+                if self._dominates(obj_chromos[i_self, :], obj_chromos[i_other, :]):
                     dominated_sol[i_self].add((i_other, tuple(other_chrom)))
-                elif self.dominates(obj_chromos[i_other, :], obj_chromos[i_self, :]):
+                elif self._dominates(obj_chromos[i_other, :], obj_chromos[i_self, :]):
                     n[i_self] += 1
             if n[i_self] == 0:
                 fonts[0].append((i_self, self_chrom))
@@ -75,24 +79,62 @@ class ChromoCalcV3:
             fonts.append(temp)
         return fonts
 
-    def __distance(self, self_chromo, other_chromo):
+    @staticmethod
+    def _distance(self_chromo, other_chromo):
         dist = np.count_nonzero(self_chromo != other_chromo)
         return dist
 
+    def _set_chromo(self, pop, idx_chromo_need_replace):
+        insert_count = len(idx_chromo_need_replace)
+        pop.Chrom = np.delete(pop.Chrom, idx_chromo_need_replace, 0)
+        pop.Phen = np.delete(pop.Phen, idx_chromo_need_replace, 0)
+        if self.config.replace_mode == "random":
+            for _ in range(insert_count):
+                need_append = np.arange(self.robots[-2].delimiter, self.px.shape[0] + 1)
+                np.random.shuffle(need_append)
+                pop.Chrom = np.vstack((pop.Chrom, need_append))
+                pop.Phen = np.vstack((pop.Phen, need_append))
+        elif self.config.replace_mode == "reverse":
+            delim_list = [self.robots[rb].delimiter for rb in range(self.config.robots_count)]
+            for idx_chromo in idx_chromo_need_replace:
+                chromo = pop.Chrom[idx_chromo]
+
+                num = 0
+                pre_i = 0
+                need_append = np.zeros((0,))
+                for i, gene in enumerate(chromo):
+                    if gene in delim_list:
+                        temp = chromo[pre_i:i]
+                        pre_i = i + 1
+                        temp = np.flip(temp)
+                        need_append = np.hstack((need_append, temp, num))
+                        num -= 1
+                need_append = np.hstack((need_append, chromo[pre_i:]))
+                need_append = need_append.astype(int)
+                pop.Chrom = np.vstack((pop.Chrom, need_append))
+                pop.Phen = np.vstack((pop.Phen, need_append))
+
+                # pop.Chrom = temp_chromo
+                # pop.Phen = temp_chromo
+
     def replace_chromosome(self, pop, threshold):
-        fonts = self.__fast_nondominated_sorting(pop)
+        fonts = self._fast_nondominated_sorting(pop)
         n = []
         for f in fonts[0:-1]:
             i, chromo_1 = f[0]
             for i, chromo in f[1:]:
-                dist = self.__distance(chromo_1, chromo)
+                dist = self._distance(chromo_1, chromo)
                 if dist <= threshold:
                     n.append(i)
-        pop.Chrom = np.delete(pop.Chrom, n, 0)
-        for i in range(len(n)):
-            need_append = np.arange(self.robots[-2].delimiter, self.px.shape[0] + 1)
-            np.random.shuffle(need_append)
-            pop.Chrom = np.vstack((pop.Chrom, need_append))
+        if len(n) > 0:
+            print()
+        self._set_chromo(pop, n)
+        # pop.Chrom = np.delete(pop.Chrom, n, 0)
+        # pop.Phen = np.delete(pop.Phen, n, 0)
+        # for _ in range(len(n)):
+        #     need_append = np.arange(self.robots[-2].delimiter, self.px.shape[0] + 1)
+        #     np.random.shuffle(need_append)
+        #     pop.Chrom = np.vstack((pop.Chrom, need_append))
 
     def _need_preAdj(self, p_id: int, robot: Robot) -> bool:
         vv_robot = Coord(self.px[p_id], self.py[p_id], self.pz[p_id])

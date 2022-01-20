@@ -157,7 +157,7 @@ def c_measurement(obj_a_all: np.ndarray, obj_b_all: np.ndarray) -> float:
     dominate_count = 0
     for obj_b in obj_b_all:
         for obj_a in obj_a_all:
-            is_dominate = ChromoCalcV3.dominates(obj_a, obj_b)
+            is_dominate = ChromoCalcV3.a_dominates_b(obj_a, obj_b)
             if is_dominate:
                 dominate_count += 1
                 break

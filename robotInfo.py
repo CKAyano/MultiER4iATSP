@@ -68,6 +68,7 @@ class Config:
         self.adj_chromo = config["adj_chromo"]
         self.replace_chromo = config["replace_chromo"][0]
         self.replace_chromo_dist = config["replace_chromo"][1]
+        self.replace_mode = config["replace_chromo"][2]
         self.custom_initChrom = config["custom_initChrom"]
         # self.mode = config["mode"]
         self.robots_count = config["robots_count"]
