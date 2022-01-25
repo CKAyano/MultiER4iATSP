@@ -86,6 +86,7 @@ class ChromoCalcV3:
 
     def _set_chromo(self, pop, idx_chromo_need_replace):
         insert_count = len(idx_chromo_need_replace)
+        chromos = pop.Chrom[idx_chromo_need_replace]
         pop.Chrom = np.delete(pop.Chrom, idx_chromo_need_replace, 0)
         pop.Phen = np.delete(pop.Phen, idx_chromo_need_replace, 0)
         if self.config.replace_mode == "random":
@@ -96,9 +97,9 @@ class ChromoCalcV3:
                 pop.Phen = np.vstack((pop.Phen, need_append))
         elif self.config.replace_mode == "reverse":
             delim_list = [self.robots[rb].delimiter for rb in range(self.config.robots_count)]
-            for idx_chromo in idx_chromo_need_replace:
-                chromo = pop.Chrom[idx_chromo]
-
+            for i in range(len(idx_chromo_need_replace)):
+                # chromo = pop.Chrom[idx_chromo]
+                chromo = chromos[i]
                 num = 0
                 pre_i = 0
                 need_append = np.zeros((0,))
@@ -109,7 +110,7 @@ class ChromoCalcV3:
                         temp = np.flip(temp)
                         need_append = np.hstack((need_append, temp, num))
                         num -= 1
-                need_append = np.hstack((need_append, chromo[pre_i:]))
+                need_append = np.hstack((need_append, np.flip(chromo[pre_i:])))
                 need_append = need_append.astype(int)
                 pop.Chrom = np.vstack((pop.Chrom, need_append))
                 pop.Phen = np.vstack((pop.Phen, need_append))
