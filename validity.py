@@ -1,3 +1,4 @@
+from argparse import ArgumentError
 from email import header
 import numpy as np
 from chromoCalcV3 import ChromoCalcV3
@@ -157,12 +158,96 @@ def c_measurement(obj_a_all: np.ndarray, obj_b_all: np.ndarray) -> float:
     dominate_count = 0
     for obj_b in obj_b_all:
         for obj_a in obj_a_all:
-            is_dominate = ChromoCalcV3.a_dominates_b(obj_a, obj_b)
+            is_dominate = ChromoCalcV3._dominates(obj_a, obj_b)
             if is_dominate:
                 dominate_count += 1
                 break
     preferment_value = dominate_count / obj_b_count
     return preferment_value
+
+
+def manhattan_distance(sorted_objV) -> List:
+    d = []
+    for i in range(sorted_objV.shape[0]):
+        di = []
+        for i_other in range(sorted_objV.shape[0]):
+            if i != i_other:
+                sum_diff = 0
+                for obj_num in range(sorted_objV.shape[1]):
+                    temp = np.abs(sorted_objV[i, obj_num] - sorted_objV[i_other, obj_num])
+                    sum_diff = sum_diff + temp
+                di.append(sum_diff)
+        d.append(min(di))
+    return d
+
+
+def spacing_metric(objV):
+    objV = sort_obj_value(objV)
+    dist = manhattan_distance(objV)
+    dist_count = len(dist)
+    dist_np = np.array(dist)
+    dist_mean = np.mean(dist)
+    sp = np.sum(np.square(dist_np - dist_mean)) / (dist_count - 1)
+    return sp
+
+
+# def utopia_point_value(objV) -> List:
+#     if objV.shape[1] != 2:
+#         raise ArgumentError(
+#             f"number of objectives should be 2 for this method, but now is {objV.shape[1]}")
+#     objV = sort_obj_value(objV)
+#     return [objV[-1, 0], objV[0, 1]]
+
+
+# def nadir_point_value(objV):
+#     if objV.shape[1] != 2:
+#         raise ArgumentError(
+#             f"number of objectives should be 2 for this method, but now is {objV.shape[1]}")
+#     objV = sort_obj_value(objV)
+#     return [objV[0, 0], objV[-1, 1]]
+
+
+def overall_pareto_spread(objV, range_obj):
+    objV = sort_obj_value(objV)
+    f_pb = [range_obj[0][0], range_obj[1][0]]
+    f_pg = [range_obj[0][1], range_obj[1][1]]
+
+    os_h = []
+    for obj_num in range(objV.shape[1]):
+        os_h.append(
+            np.abs(np.max(objV[:, obj_num]) - np.min(objV[:, obj_num]))
+            / np.abs(f_pb[obj_num] - f_pg[obj_num])
+        )
+    os = np.prod(os_h)
+    return os
+
+
+def distribution_metric(objV, range_obj):
+    def distance(_sorted_objV):
+        d = []
+        for obj_num in range(_sorted_objV.shape[1]):
+            d.append(np.diff(_sorted_objV[:, obj_num]))
+        return d
+
+    objV = sort_obj_value(objV)
+    d = distance(objV)
+    f_pb = [range_obj[0][0], range_obj[1][0]]
+    f_pg = [range_obj[0][1], range_obj[1][1]]
+    dm_h = []
+    for obj_num in range(objV.shape[1]):
+        upper = np.std(d[obj_num]) / np.mean(d[obj_num])
+        bottom = np.abs(np.max(objV[:, obj_num]) - np.min(objV[:, obj_num])) / np.abs(
+            f_pb[obj_num] - f_pg[obj_num]
+        )
+        dm_h.append(upper / bottom)
+    dm = sum(dm_h) / objV.shape[0]
+    return dm
+
+
+def sort_obj_value(objV):
+    objV = np.unique(objV, axis=0)
+    objV = objV[objV[:, 0].argsort()]
+    return objV
 
 
 def main():
@@ -174,13 +259,13 @@ def main():
 
 
 def main_CMeasurement():
-    def plot_vs(obj_rep, obj_noRep, value_rep, value_noRep, rep, noRep):
-        (p1,) = plt.plot(obj_rep[:, 1], obj_rep[:, 0], "ro")
-        (p2,) = plt.plot(obj_noRep[:, 1], obj_noRep[:, 0], "bo")
-        plt.xlabel("std of every robots' angle changes")
-        plt.ylabel("total angle changes of every robots")
+    def plot_vs(obj_rep, obj_noRep, value_rep, value_noRep, rep_filename, noRep_filename):
+        (p1,) = plt.plot(obj_rep[:, 0], obj_rep[:, 1], "ro")
+        (p2,) = plt.plot(obj_noRep[:, 0], obj_noRep[:, 1], "bo")
+        plt.xlabel("total angle changes of every robots")
+        plt.ylabel("std of every robots' angle changes")
         plt.legend([p1, p2], [f"rep, vs no_rep={value_rep}", f"no_rep, vs rep={value_noRep}"])
-        plt.title(f"{rep}(rep) vs {noRep}(noRep)")
+        plt.title(f"{rep_filename}(rep) vs {noRep_filename}(noRep)")
 
     folder_noRep_path = "./[Result]/noRep_10000Gen_noSlice"
     folder_rep_path = "./[Result]/rep_10000Gen_noSlice"
@@ -213,4 +298,6 @@ def main_CMeasurement():
 
 if __name__ == "__main__":
     # main()
-    main_CMeasurement()
+    # main_CMeasurement()
+    objV = np.genfromtxt("./[Result]/mode_reverse/220128-174038/ObjV.csv", delimiter=",")
+    overall_pareto_spread(objV)
