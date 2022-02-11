@@ -195,20 +195,32 @@ def spacing_metric(objV):
     dist_count = len(dist)
     dist_np = np.array(dist)
     dist_mean = np.mean(dist)
-    sp = np.sum(np.square(dist_np - dist_mean)) / (dist_count - 1)
+    sp = np.sqrt(np.sum(np.square(dist_np - dist_mean)) / (dist_count - 1))
     return sp
 
 
 def utopia_point_value(objV) -> List:
-    if objV.shape[1] != 2:
-        raise ArgumentError(f"number of objectives should be 2 for this method, but now is {objV.shape[1]}")
+    try:
+        if objV.shape[1] != 2:
+            raise ArgumentError(
+                f"number of objectives should be 2 for this method, but now is {objV.shape[1]}"
+            )
+    except ArgumentError as e:
+        print(repr(e))
+        raise
     objV = sort_obj_value(objV)
     return [objV[0, 0], objV[-1, 1]]
 
 
 def nadir_point_value(objV):
-    if objV.shape[1] != 2:
-        raise ArgumentError(f"number of objectives should be 2 for this method, but now is {objV.shape[1]}")
+    try:
+        if objV.shape[1] != 2:
+            raise ArgumentError(
+                f"number of objectives should be 2 for this method, but now is {objV.shape[1]}"
+            )
+    except ArgumentError as e:
+        print(repr(e))
+        raise
     objV = sort_obj_value(objV)
     return [objV[-1, 0], objV[0, 1]]
 
@@ -363,6 +375,7 @@ def main_metric_compare():
     writer = pd.ExcelWriter("./[Result]/metrics_compare/metrics.xlsx", engine="xlsxwriter")
     for i, md in enumerate(method_list):
         res = main_distribution_metric(md)
+        print(res[1], res[2])
         df = pd.DataFrame(res[0]).T
         df.columns = ["noRep", "rep_random", "rep_reverse"]
         df.to_excel(writer, sheet_name=sheet_name[i])
