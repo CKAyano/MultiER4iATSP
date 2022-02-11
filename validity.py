@@ -1,5 +1,7 @@
 from argparse import ArgumentError
 from email import header
+from enum import Enum, auto
+from statistics import mean, stdev
 import numpy as np
 from chromoCalcV3 import ChromoCalcV3
 import robotCalc_Geo3D as rcg
@@ -166,6 +168,12 @@ def c_measurement(obj_a_all: np.ndarray, obj_b_all: np.ndarray) -> float:
     return preferment_value
 
 
+class DMType(Enum):
+    SP = auto()
+    OS = auto()
+    DM = auto()
+
+
 def manhattan_distance(sorted_objV) -> List:
     d = []
     for i in range(sorted_objV.shape[0]):
@@ -191,26 +199,24 @@ def spacing_metric(objV):
     return sp
 
 
-# def utopia_point_value(objV) -> List:
-#     if objV.shape[1] != 2:
-#         raise ArgumentError(
-#             f"number of objectives should be 2 for this method, but now is {objV.shape[1]}")
-#     objV = sort_obj_value(objV)
-#     return [objV[-1, 0], objV[0, 1]]
+def utopia_point_value(objV) -> List:
+    if objV.shape[1] != 2:
+        raise ArgumentError(f"number of objectives should be 2 for this method, but now is {objV.shape[1]}")
+    objV = sort_obj_value(objV)
+    return [objV[0, 0], objV[-1, 1]]
 
 
-# def nadir_point_value(objV):
-#     if objV.shape[1] != 2:
-#         raise ArgumentError(
-#             f"number of objectives should be 2 for this method, but now is {objV.shape[1]}")
-#     objV = sort_obj_value(objV)
-#     return [objV[0, 0], objV[-1, 1]]
+def nadir_point_value(objV):
+    if objV.shape[1] != 2:
+        raise ArgumentError(f"number of objectives should be 2 for this method, but now is {objV.shape[1]}")
+    objV = sort_obj_value(objV)
+    return [objV[-1, 0], objV[0, 1]]
 
 
 def overall_pareto_spread(objV, range_obj):
     objV = sort_obj_value(objV)
-    f_pb = [range_obj[0][0], range_obj[1][0]]
-    f_pg = [range_obj[0][1], range_obj[1][1]]
+    f_pb = range_obj[0]
+    f_pg = range_obj[1]
 
     os_h = []
     for obj_num in range(objV.shape[1]):
@@ -226,13 +232,13 @@ def distribution_metric(objV, range_obj):
     def distance(_sorted_objV):
         d = []
         for obj_num in range(_sorted_objV.shape[1]):
-            d.append(np.diff(_sorted_objV[:, obj_num]))
+            d.append(np.abs(np.diff(_sorted_objV[:, obj_num])))
         return d
 
     objV = sort_obj_value(objV)
     d = distance(objV)
-    f_pb = [range_obj[0][0], range_obj[1][0]]
-    f_pg = [range_obj[0][1], range_obj[1][1]]
+    f_pb = range_obj[0]
+    f_pg = range_obj[1]
     dm_h = []
     for obj_num in range(objV.shape[1]):
         upper = np.std(d[obj_num]) / np.mean(d[obj_num])
@@ -248,6 +254,61 @@ def sort_obj_value(objV):
     objV = np.unique(objV, axis=0)
     objV = objV[objV[:, 0].argsort()]
     return objV
+
+
+def find_utopia_nadir(*main_folder):
+    dir_list = []
+    for folder in main_folder:
+        dir_list.append(os.listdir(folder))
+    utopia_list = []
+    nadir_list = []
+    for i, dir_folder in enumerate(dir_list):
+        for dir in dir_folder:
+            objV = np.genfromtxt(f"{main_folder[i]}/{dir}/ObjV.csv", delimiter=",")
+            utopia_list.append(utopia_point_value(objV))
+            nadir_list.append(nadir_point_value(objV))
+    utopia_np = np.array(utopia_list)
+    nadir_np = np.array(nadir_list)
+    utopia_value = np.min(utopia_np, axis=0)
+    nadir_value = np.max(nadir_np, axis=0)
+    return utopia_value, nadir_value
+
+
+def main_distribution_metric(method: DMType):
+    noRep_path = "./[Result]/noRep_10000Gen_noSlice"
+    repRandom_path = "./[Result]/rep_10000Gen_noSlice"
+    repReverse_path = "./[Result]/mode_reverse"
+
+    noRep_folders = os.listdir(noRep_path)
+    repRandom_folders = os.listdir(repRandom_path)
+    repReverse_folders = os.listdir(repReverse_path)
+
+    if method == DMType.SP:
+        metric_method = spacing_metric
+    elif method == DMType.OS:
+        metric_method = overall_pareto_spread
+        utopia_nadir = find_utopia_nadir(noRep_path, repRandom_path, repReverse_path)
+    elif method == DMType.DM:
+        metric_method = distribution_metric
+        utopia_nadir = find_utopia_nadir(noRep_path, repRandom_path, repReverse_path)
+
+    folders = [noRep_folders, repRandom_folders, repReverse_folders]
+    folders_path = [noRep_path, repRandom_path, repReverse_path]
+    metric_all_folder = []
+    metric_mean = []
+    metric_std = []
+    for i in range(3):
+        metric = []
+        for dir in folders[i]:
+            objV = np.genfromtxt(f"{folders_path[i]}/{dir}/ObjV.csv", delimiter=",")
+            if method == DMType.SP:
+                metric.append(metric_method(objV))
+            else:
+                metric.append(metric_method(objV, utopia_nadir))
+        metric_all_folder.append(metric)
+        metric_mean.append(np.mean(metric))
+        metric_std.append(np.std(metric))
+    return metric_all_folder, metric_mean, metric_std
 
 
 def main():
@@ -296,8 +357,22 @@ def main_CMeasurement():
             plt.clf()
 
 
+def main_metric_compare():
+    method_list = [DMType.SP, DMType.OS, DMType.DM]
+    sheet_name = ["SP", "OS", "DM"]
+    writer = pd.ExcelWriter("./[Result]/metrics_compare/metrics.xlsx", engine="xlsxwriter")
+    for i, md in enumerate(method_list):
+        res = main_distribution_metric(md)
+        df = pd.DataFrame(res[0]).T
+        df.columns = ["noRep", "rep_random", "rep_reverse"]
+        df.to_excel(writer, sheet_name=sheet_name[i])
+        # print(res)
+    writer.save()
+
+
 if __name__ == "__main__":
     # main()
     # main_CMeasurement()
-    objV = np.genfromtxt("./[Result]/mode_reverse/220128-174038/ObjV.csv", delimiter=",")
-    overall_pareto_spread(objV)
+    # objV = np.genfromtxt("./[Result]/mode_reverse/220128-174038/ObjV.csv", delimiter=",")
+    # overall_pareto_spread(objV)
+    main_metric_compare()
