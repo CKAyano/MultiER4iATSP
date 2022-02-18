@@ -16,6 +16,7 @@ import imageio
 import natsort
 import matplotlib.pyplot as plt
 import pandas as pd
+import datetime
 
 
 class DrawRobots:
@@ -340,39 +341,53 @@ def main_CMeasurement():
         plt.legend([p1, p2], [f"rep, vs no_rep={value_rep}", f"no_rep, vs rep={value_noRep}"])
         plt.title(f"{rep_filename}(rep) vs {noRep_filename}(noRep)")
 
-    folder_noRep_path = "./[Result]/noRep_10000Gen_noSlice"
-    folder_rep_path = "./[Result]/rep_10000Gen_noSlice"
+    folder_self_path = "./[Result]/noRep_10000Gen_noSlice"
+    folder_other_path = "./[Result]/mode_reverse"
 
-    folder_noRep_list = os.listdir(folder_noRep_path)
-    folder_rep_list = os.listdir(folder_rep_path)
-    for noRep in folder_noRep_list:
-        noRep_vs_rep = np.zeros((1, 0))
-        rep_vs_noRep = np.zeros((1, 0))
-        obj_noRep_path = f"{folder_noRep_path}/{noRep}/ObjV.csv"
-        obj_noRep = np.genfromtxt(obj_noRep_path, delimiter=",")
-        obj_noRep = np.unique(obj_noRep, axis=0)
+    folder_self_list = os.listdir(folder_self_path)
+    folder_other_list = os.listdir(folder_other_path)
+    datetime_now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
+    path_output = f"./[Result]/c_measurement/{datetime_now}"
+    Path(f"{path_output}/figure").mkdir(parents=True, exist_ok=True)
+    for myself in folder_self_list:
+        self_vs_other = np.zeros((0, 1))
+        other_vs_self = np.zeros((0, 1))
+        obj_self_path = f"{folder_self_path}/{myself}/ObjV.csv"
+        obj_self = np.genfromtxt(obj_self_path, delimiter=",")
+        obj_self = np.unique(obj_self, axis=0)
         # if obj_noRep.shape[0] >= 20:
-        for rep in folder_rep_list:
-            obj_rep_path = f"{folder_rep_path}/{rep}/ObjV.csv"
-            obj_rep = np.genfromtxt(obj_rep_path, delimiter=",")
-            obj_rep = np.unique(obj_rep, axis=0)
+        for other in folder_other_list:
+            obj_other_path = f"{folder_other_path}/{other}/ObjV.csv"
+            obj_other = np.genfromtxt(obj_other_path, delimiter=",")
+            obj_other = np.unique(obj_other, axis=0)
             # if obj_rep.shape[0] >= 20:
-            c_value_rep = c_measurement(obj_rep, obj_noRep)
-            c_value_noRep = c_measurement(obj_noRep, obj_rep)
-            noRep_vs_rep = np.append(noRep_vs_rep, c_value_noRep)
-            rep_vs_noRep = np.append(rep_vs_noRep, c_value_rep)
+            c_value_self = c_measurement(obj_self, obj_other)
+            c_value_other = c_measurement(obj_other, obj_self)
+            self_vs_other = np.vstack((self_vs_other, c_value_self))
+            other_vs_self = np.vstack((other_vs_self, c_value_other))
 
-            plot_vs(obj_rep, obj_noRep, c_value_rep, c_value_noRep, rep, noRep)
-            plt.savefig(f"./[Result]/c_measurement/{rep}_vs_{noRep}.png")
+            plot_vs(obj_other, obj_self, c_value_other, c_value_self, other, myself)
+            plt.savefig(f"{path_output}/figure/{other}_vs_{myself}.png")
             plt.close()
             plt.cla()
             plt.clf()
+    self_vs_other_mean = np.mean(self_vs_other)
+    self_vs_other_std = np.std(self_vs_other)
+    other_vs_self_mean = np.mean(other_vs_self)
+    other_vs_self_std = np.std(other_vs_self)
+    mean_std = np.array([[self_vs_other_mean, other_vs_self_mean], [self_vs_other_std, other_vs_self_std]])
+    fileoutput = np.hstack((self_vs_other, other_vs_self))
+    fileoutput = np.vstack((fileoutput, mean_std))
+    np.savetxt(f"{path_output}/result.csv", fileoutput, delimiter=",")
 
 
 def main_metric_compare():
     method_list = [DMType.SP, DMType.OS, DMType.DM]
     sheet_name = ["SP", "OS", "DM"]
-    writer = pd.ExcelWriter("./[Result]/metrics_compare/metrics.xlsx", engine="xlsxwriter")
+    writer = pd.ExcelWriter(
+        f"./[Result]/metrics_compare/metrics{datetime.datetime.now().strftime('%y%m%d-%H%M%S')}.xlsx",
+        engine="xlsxwriter",
+    )
     for i, md in enumerate(method_list):
         res = main_distribution_metric(md)
         print(res[1], res[2])
@@ -385,7 +400,7 @@ def main_metric_compare():
 
 if __name__ == "__main__":
     # main()
-    # main_CMeasurement()
+    main_CMeasurement()
     # objV = np.genfromtxt("./[Result]/mode_reverse/220128-174038/ObjV.csv", delimiter=",")
     # overall_pareto_spread(objV)
-    main_metric_compare()
+    # main_metric_compare()
