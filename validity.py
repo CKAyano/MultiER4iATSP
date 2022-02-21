@@ -342,42 +342,52 @@ def main_CMeasurement():
         plt.title(f"{rep_filename}(rep) vs {noRep_filename}(noRep)")
 
     folder_self_path = "./[Result]/noRep_10000Gen_noSlice"
-    folder_other_path = "./[Result]/mode_reverse"
+    folder_other_path = "./[Result]/rep_10000Gen_noSlice"
 
     folder_self_list = os.listdir(folder_self_path)
     folder_other_list = os.listdir(folder_other_path)
     datetime_now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
     path_output = f"./[Result]/c_measurement/{datetime_now}"
     Path(f"{path_output}/figure").mkdir(parents=True, exist_ok=True)
-    for myself in folder_self_list:
-        self_vs_other = np.zeros((0, 1))
-        other_vs_self = np.zeros((0, 1))
+
+    win_self_count = 0
+    win_other_count = 0
+    equal_count = 0
+    self_vs_other = np.zeros((0, 1))
+    other_vs_self = np.zeros((0, 1))
+    for myself, other in zip(folder_self_list, folder_other_list):
         obj_self_path = f"{folder_self_path}/{myself}/ObjV.csv"
         obj_self = np.genfromtxt(obj_self_path, delimiter=",")
         obj_self = np.unique(obj_self, axis=0)
         # if obj_noRep.shape[0] >= 20:
-        for other in folder_other_list:
-            obj_other_path = f"{folder_other_path}/{other}/ObjV.csv"
-            obj_other = np.genfromtxt(obj_other_path, delimiter=",")
-            obj_other = np.unique(obj_other, axis=0)
-            # if obj_rep.shape[0] >= 20:
-            c_value_self = c_measurement(obj_self, obj_other)
-            c_value_other = c_measurement(obj_other, obj_self)
-            self_vs_other = np.vstack((self_vs_other, c_value_self))
-            other_vs_self = np.vstack((other_vs_self, c_value_other))
+        obj_other_path = f"{folder_other_path}/{other}/ObjV.csv"
+        obj_other = np.genfromtxt(obj_other_path, delimiter=",")
+        obj_other = np.unique(obj_other, axis=0)
+        # if obj_rep.shape[0] >= 20:
+        c_value_self = c_measurement(obj_self, obj_other)
+        c_value_other = c_measurement(obj_other, obj_self)
+        self_vs_other = np.vstack((self_vs_other, c_value_self))
+        other_vs_self = np.vstack((other_vs_self, c_value_other))
 
-            plot_vs(obj_other, obj_self, c_value_other, c_value_self, other, myself)
-            plt.savefig(f"{path_output}/figure/{other}_vs_{myself}.png")
-            plt.close()
-            plt.cla()
-            plt.clf()
-    self_vs_other_mean = np.mean(self_vs_other)
-    self_vs_other_std = np.std(self_vs_other)
-    other_vs_self_mean = np.mean(other_vs_self)
-    other_vs_self_std = np.std(other_vs_self)
-    mean_std = np.array([[self_vs_other_mean, other_vs_self_mean], [self_vs_other_std, other_vs_self_std]])
+        if c_value_self > c_value_other:
+            win_self_count += 1
+        if c_value_self < c_value_other:
+            win_other_count += 1
+        if c_value_self == c_value_other:
+            equal_count += 1
+
+        plot_vs(obj_other, obj_self, c_value_other, c_value_self, other, myself)
+        plt.savefig(f"{path_output}/figure/{other}_vs_{myself}.png")
+        plt.close()
+        plt.cla()
+        plt.clf()
+    # self_vs_other_mean = np.mean(self_vs_other)
+    # self_vs_other_std = np.std(self_vs_other)
+    # other_vs_self_mean = np.mean(other_vs_self)
+    # other_vs_self_std = np.std(other_vs_self)
+    # mean_std = np.array([[self_vs_other_mean, other_vs_self_mean], [self_vs_other_std, other_vs_self_std]])
     fileoutput = np.hstack((self_vs_other, other_vs_self))
-    fileoutput = np.vstack((fileoutput, mean_std))
+    fileoutput = np.vstack((fileoutput, np.array([win_self_count, win_other_count])))
     np.savetxt(f"{path_output}/result.csv", fileoutput, delimiter=",")
 
 
