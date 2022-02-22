@@ -66,14 +66,18 @@ def save_feasibleSol_figure(feasibleSol_list) -> None:
 def save_pareto(objv_path) -> None:
     if os.path.exists(objv_path):
         objv = np.genfromtxt(objv_path, delimiter=",")
-        plt.plot(objv[:, 1], objv[:, 0], ".r")
-        plt.title("Pareto Front")
-        plt.xlabel("std of every robots' angle changes")
-        plt.ylabel("total angle changes of every robots")
-        plt.savefig("./Result/pareto.png")
-        plt.close()
-        plt.cla()
-        plt.clf()
+        try:
+            plt.plot(objv[:, 1], objv[:, 0], ".r")
+            plt.title("Pareto Front")
+            plt.xlabel("std of every robots' angle changes")
+            plt.ylabel("total angle changes of every robots")
+            plt.savefig("./Result/pareto.png")
+            plt.close()
+            plt.cla()
+            plt.clf()
+        except Exception:
+            pass
+
     else:
         with open("./Result/pareto.txt", "w") as file:
             file.write("No solution")
@@ -119,10 +123,23 @@ def main() -> None:
         if step != num_slicing - 1:
             del_result_contents()
 
+    if len(GEN_LIST) == 1:
+        filepath_1 = "noStep"
+    else:
+        filepath_1 = f"{len(GEN_LIST)}step"
+
+    filepath_mode = "no_replace"
+    if problem.ccv3.config.replace_chromo is True:
+        filepath_mode = problem.ccv3.config.replace_mode
+    result_path_1 = f"./[Result]/{filepath_1}/Gen{GEN_LIST[-1]}/{filepath_mode}"
+    result_paht_2 = f"/Hamming{problem.ccv3.config.replace_chromo_dist}"
+    result_path = f"{result_path_1}{result_paht_2}"
+    Path(result_path).mkdir(parents=True, exist_ok=True)
+
     save_pareto("./Result/ObjV.csv")
     save_feasibleSol_figure(feasibleSol_list)
     save_status(passTime_sec)
-    shutil.copytree("./Result", f"./[Result]/{datetime.datetime.now().strftime('%y%m%d-%H%M%S')}")
+    shutil.copytree("./Result", f"{result_path}/{datetime.datetime.now().strftime('%y%m%d-%H%M%S')}")
 
 
 if __name__ == "__main__":
