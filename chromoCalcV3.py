@@ -492,3 +492,6 @@ class ChromoCalcV3:
         score_dist = score_dist // 5 * 5
         std_rbs_angleOffset = std_rbs_angleOffset // 5 * 5
         return score_dist, std_rbs_angleOffset
+
+    def score_single_robot(self):
+        pass
