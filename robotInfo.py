@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional, List, Tuple
+from typing_extensions import Self
 import numpy as np
 from enum import Enum, auto
 import yaml
@@ -28,6 +29,13 @@ class Coord:
             new_yy = self.yy - other.yy
             new_zz = self.zz - other.zz
             return Coord(new_xx, new_yy, new_zz)
+        return NotImplemented
+
+    def distance(self, other: Self):
+        if isinstance(other, Coord):
+            np_self = self.coordToNp()
+            np_other = other.coordToNp()
+            return np.sqrt(np.sum(np.square(np_self - np_other)))
         return NotImplemented
 
 
