@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from typing import Optional, List, Tuple
-from typing_extensions import Self
 import numpy as np
 from enum import Enum, auto
 import yaml
@@ -31,7 +30,7 @@ class Coord:
             return Coord(new_xx, new_yy, new_zz)
         return NotImplemented
 
-    def distance(self, other: Self):
+    def distance(self, other):
         if isinstance(other, Coord):
             np_self = self.coordToNp()
             np_other = other.coordToNp()

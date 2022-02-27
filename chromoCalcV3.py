@@ -455,6 +455,10 @@ class ChromoCalcV3:
         return score_dist, std_rbs_angleOffset
 
     def score_step(self, chromosome, logging) -> Tuple[float, float]:
+        if self.config.robots_count == 1:
+            score_dist, totalDistance = self.score_single_robot(chromosome, logging)
+            return score_dist, totalDistance
+
         _interpolation = self.interpolation_step(chromosome)
         if _interpolation is not None:
             totalInt_q, totalAngle, std_rbs_angleOffset = (
@@ -493,5 +497,61 @@ class ChromoCalcV3:
         std_rbs_angleOffset = std_rbs_angleOffset // 5 * 5
         return score_dist, std_rbs_angleOffset
 
-    def score_single_robot(self):
-        pass
+    def get_point_distance(self, totalInt_q_rbs):
+        dist_rbs = []
+        for rb in range(self.config.robots_count):
+            totalInt_q = totalInt_q_rbs[rb]
+            dist = 0
+            for i in range(totalInt_q.shape[0] - 1):
+                i_next = i + 1
+                vv_all_i = self.rc.userFK(totalInt_q[i, :])
+                vv_i = vv_all_i.v5
+                vv_all_i_next = self.rc.userFK(totalInt_q[i_next, :])
+                vv_i_next = vv_all_i_next.v5
+                _dist = vv_i.distance(vv_i_next)
+                dist += _dist
+
+            dist_rbs.append(dist)
+        return dist_rbs
+
+    def score_single_robot(self, chromosome, logging):
+        def _get_score(_totalAngle, _collisionScore, _totalDistance):
+            _score_dist = _totalAngle + _collisionScore
+            _score_dist = _score_dist // 5 * 5
+            _totalDistance = _totalDistance // 5 * 5
+            return _score_dist, _totalDistance
+
+        _interpolation = self.interpolation_step(chromosome)
+        if _interpolation is None:
+            totalAngle = 0
+            collisionScore = 90000000
+            totalDistance = 1000000
+            msg = "Out of Range! _ None"
+            print(msg)
+            logging.save_status(msg)
+            score_dist, totalDistance = _get_score(totalAngle, collisionScore, totalDistance)
+            return score_dist, totalDistance
+
+        totalInt_q, totalAngle = (
+            _interpolation[0],
+            np.sum(_interpolation[1]),
+        )
+        totalDistance = self.get_point_distance(totalInt_q)
+        totalDistance = totalDistance[0]
+
+        if self.is_outOfRange(totalInt_q):
+            collisionScore = 90000000
+            msg = "Out of Range! _ interp"
+            print(msg)
+            logging.save_status(msg)
+            score_dist, totalDistance = _get_score(totalAngle, collisionScore, totalDistance)
+            return score_dist, totalDistance
+
+        collisionScore = 0
+        msg = "Save!"
+        print(msg)
+        logging.save_status(msg)
+        self.feasibleSol_count += 1
+        score_dist, totalDistance = _get_score(totalAngle, collisionScore, totalDistance)
+
+        return score_dist, totalDistance
