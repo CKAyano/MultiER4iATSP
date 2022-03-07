@@ -30,6 +30,13 @@ class Coord:
             return Coord(new_xx, new_yy, new_zz)
         return NotImplemented
 
+    def distance(self, other):
+        if isinstance(other, Coord):
+            np_self = self.coordToNp()
+            np_other = other.coordToNp()
+            return np.sqrt(np.sum(np.square(np_self - np_other)))
+        return NotImplemented
+
 
 @dataclass
 class Coord_all:

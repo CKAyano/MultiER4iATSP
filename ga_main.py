@@ -129,10 +129,14 @@ def main() -> None:
         filepath_1 = f"{len(GEN_LIST)}step"
 
     filepath_mode = "no_replace"
+    result_paht_2 = ""
+
     if problem.ccv3.config.replace_chromo is True:
         filepath_mode = problem.ccv3.config.replace_mode
+        result_paht_2 = f"/Hamming{problem.ccv3.config.replace_chromo_dist}"
+
     result_path_1 = f"./[Result]/{filepath_1}/Gen{GEN_LIST[-1]}/{filepath_mode}"
-    result_paht_2 = f"/Hamming{problem.ccv3.config.replace_chromo_dist}"
+
     result_path = f"{result_path_1}{result_paht_2}"
     Path(result_path).mkdir(parents=True, exist_ok=True)
 
