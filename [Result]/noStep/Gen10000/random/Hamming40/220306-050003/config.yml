@@ -1,0 +1,78 @@
+robots_count: 2
+
+replace_chromo:
+  - True
+  - 40
+  - "random"
+
+adj_chromo: True
+
+custom_initChrom: True
+
+mode: 1
+
+points_range:
+  -
+    - 100
+    - 800
+  -
+    - -300
+    - 300
+  -
+    - 50
+    - 50
+
+# points_range:
+#   -
+#     - 100
+#     - 800
+#   -
+#     - 100
+#     - 800
+#   -
+#     - 50
+#     - 50
+
+link_width: 200
+
+org_pos:
+  - 90
+  - 45
+  - 0
+  - 0
+  - 90
+  - 0
+
+joints_range:
+  -
+    - -170
+    - 170
+  -
+    - -110
+    - 120
+  -
+    - -80 # -(J2+J3)
+    - 260
+  -
+    - -190
+    - 190
+  -
+    - -120
+    - 120
+  -
+    - -360
+    - 360
+
+direct_array:
+  -
+    - 0
+    - 0
+    - -1
+  -
+    - 0
+    - 1
+    - 0
+  -
+    - 1
+    - 0
+    - 0
