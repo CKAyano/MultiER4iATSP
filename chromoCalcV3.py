@@ -91,7 +91,10 @@ class ChromoCalcV3:
         pop.Phen = np.delete(pop.Phen, idx_chromo_need_replace, 0)
         if self.config.replace_mode == "random":
             for _ in range(insert_count):
-                need_append = np.arange(self.robots[-2].delimiter, self.px.shape[0] + 1)
+                if self.config.robots_count == 1:
+                    need_append = np.arange(1, self.px.shape[0] + 1)
+                else:
+                    need_append = np.arange(self.robots[-2].delimiter, self.px.shape[0] + 1)
                 np.random.shuffle(need_append)
                 pop.Chrom = np.vstack((pop.Chrom, need_append))
                 pop.Phen = np.vstack((pop.Phen, need_append))
