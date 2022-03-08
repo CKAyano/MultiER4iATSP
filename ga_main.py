@@ -91,7 +91,8 @@ def save_status(passTime_sec) -> None:
             f'\n{"pass time:":<25}' + f"{datetime.timedelta(seconds=passTime_sec)}({passTime_sec} secs)\n"
         )
     shutil.copyfile("./output_point.csv", "./Result/output_point.csv")
-    shutil.copyfile("./config.yml", "./Result/config.yml")
+    shutil.copyfile("./CONFIG.yml", "./Result/CONFIG.yml")
+    shutil.copyfile("./GA_PARAM.yml", "./Result/GA_PARAM.yml")
     shutil.copytree("./log", "./Result/log")
 
 
@@ -123,10 +124,12 @@ def main() -> None:
         if step != num_slicing - 1:
             del_result_contents()
 
+    filepath_rbcount = f"Robot_{problem.ccv3.config.robots_count}"
+
     if len(GEN_LIST) == 1:
-        filepath_1 = "noStep"
+        filepath_step = "noStep"
     else:
-        filepath_1 = f"{len(GEN_LIST)}step"
+        filepath_step = f"step{len(GEN_LIST)}"
 
     filepath_mode = "no_replace"
     result_paht_2 = ""
@@ -135,7 +138,7 @@ def main() -> None:
         filepath_mode = problem.ccv3.config.replace_mode
         result_paht_2 = f"/Hamming{problem.ccv3.config.replace_chromo_dist}"
 
-    result_path_1 = f"./[Result]/{filepath_1}/Gen{GEN_LIST[-1]}/{filepath_mode}"
+    result_path_1 = f"./[Result]/{filepath_rbcount}/{filepath_step}/Gen{GEN_LIST[-1]}/{filepath_mode}"
 
     result_path = f"{result_path_1}{result_paht_2}"
     Path(result_path).mkdir(parents=True, exist_ok=True)
