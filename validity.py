@@ -9,7 +9,7 @@ from robotCalc_pygeos import RobotCalc_pygeos
 import Geometry3Dmaster.Geometry3D as gm
 from pathlib import Path
 from typing import List, Optional
-from robotInfo import Robot, Config
+from robotInfo import Coord, Position, Robot, Config
 from status_logging import Collision_status
 import os
 import imageio
@@ -408,9 +408,87 @@ def main_metric_compare():
     writer.save()
 
 
+class Single_Robot:
+    def save_pareto() -> None:
+        objv_path_1 = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909"
+        objv_path_2 = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220316-114439"
+        if os.path.exists(objv_path_1):
+            objv_1 = np.genfromtxt(f"{objv_path_1}/ObjV.csv", delimiter=",")
+            objv_2 = np.genfromtxt(f"{objv_path_2}/ObjV.csv", delimiter=",")
+            try:
+                (p1,) = plt.plot(objv_1[:, 0], objv_1[:, 1], ".r")
+                (p2,) = plt.plot(objv_2[:, 0], objv_2[:, 1], ".b")
+                plt.title("Pareto Front")
+                plt.xlabel("Total Travel Distance")
+                plt.ylabel("Total Angle Changes of Robot")
+                plt.legend([p1, p2], ["multi_solutions", "single_solution"])
+                plt.savefig(f"{objv_path_2}/pareto_2type.png")
+                plt.close()
+                plt.cla()
+                plt.clf()
+            except Exception:
+                pass
+
+        else:
+            with open("./Result/pareto.txt", "w") as file:
+                file.write("No solution")
+
+    def first_sol_export():
+        config = Config("./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/config.yml")
+        chromo_path = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/Chrom.csv"
+        points_path = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/output_point.csv"
+        chromo = np.genfromtxt(chromo_path, delimiter=",", dtype="int32")
+        points = np.genfromtxt(points_path, delimiter=",")
+        first_sol = chromo[0, :]
+        idx_first_sol = first_sol - 1
+        points_first_sol = points[idx_first_sol]
+        rc = RobotCalc_pygeos(config)
+        rb = Robot(0, Position.LEFT)
+        q_1_best = config.org_pos
+        q_best = np.zeros((0, 6))
+        for pt in points_first_sol:
+            vv_pt = Coord(pt[0], pt[1], pt[2])
+            q_2_best = rc.coord2bestAngle(vv_pt, q_1_best, rb)
+            q_best = np.vstack((q_best, q_2_best))
+            q_1_best = q_2_best
+        np.savetxt(
+            "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/best_joints.csv",
+            q_best,
+            delimiter=",",
+        )
+        np.savetxt(
+            "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/points_first_sol.csv",
+            points_first_sol,
+            delimiter=",",
+        )
+
+    def ik_list():
+        config = Config("./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/config.yml")
+        rc = RobotCalc_pygeos(config)
+        points_path = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/output_point.csv"
+        points = np.genfromtxt(points_path, delimiter=",")
+        rb = Robot(0, Position.LEFT)
+        first_three_idx = [0, 2, 4, 6]
+        ik_all = np.empty((0, 7))
+        for i, pt in enumerate(points):
+            vv = Coord(pt[0], pt[1], pt[2])
+            id_pt_list = np.hstack((int(i + 1), pt))
+            vv_ik = rc.userIK(vv)
+            vv_ik_first_three = vv_ik[first_three_idx, 0:3]
+            id_pt_array = np.repeat(id_pt_list[None, :], 4, axis=0)
+            id_pt_ik = np.hstack((id_pt_array, vv_ik_first_three))
+            ik_all = np.vstack((ik_all, id_pt_ik))
+        np.savetxt(
+            "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/points_all_ik.csv",
+            ik_all,
+            delimiter=",",
+        )
+
+
 if __name__ == "__main__":
     # main()
-    main_CMeasurement()
+    # main_CMeasurement()
     # objV = np.genfromtxt("./[Result]/mode_reverse/220128-174038/ObjV.csv", delimiter=",")
     # overall_pareto_spread(objV)
     # main_metric_compare()
+    Single_Robot.ik_list()
