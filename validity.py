@@ -175,155 +175,6 @@ class DMType(Enum):
     DM = auto()
 
 
-def manhattan_distance(sorted_objV) -> List:
-    d = []
-    for i in range(sorted_objV.shape[0]):
-        di = []
-        for i_other in range(sorted_objV.shape[0]):
-            if i != i_other:
-                sum_diff = 0
-                for obj_num in range(sorted_objV.shape[1]):
-                    temp = np.abs(sorted_objV[i, obj_num] - sorted_objV[i_other, obj_num])
-                    sum_diff = sum_diff + temp
-                di.append(sum_diff)
-        d.append(min(di))
-    return d
-
-
-def spacing_metric(objV):
-    objV = sort_obj_value(objV)
-    dist = manhattan_distance(objV)
-    dist_count = len(dist)
-    dist_np = np.array(dist)
-    dist_mean = np.mean(dist)
-    sp = np.sqrt(np.sum(np.square(dist_np - dist_mean)) / (dist_count - 1))
-    return sp
-
-
-def utopia_point_value(objV) -> List:
-    try:
-        if objV.shape[1] != 2:
-            raise ArgumentError(
-                f"number of objectives should be 2 for this method, but now is {objV.shape[1]}"
-            )
-    except ArgumentError as e:
-        print(repr(e))
-        raise
-    objV = sort_obj_value(objV)
-    return [objV[0, 0], objV[-1, 1]]
-
-
-def nadir_point_value(objV):
-    try:
-        if objV.shape[1] != 2:
-            raise ArgumentError(
-                f"number of objectives should be 2 for this method, but now is {objV.shape[1]}"
-            )
-    except ArgumentError as e:
-        print(repr(e))
-        raise
-    objV = sort_obj_value(objV)
-    return [objV[-1, 0], objV[0, 1]]
-
-
-def overall_pareto_spread(objV, range_obj):
-    objV = sort_obj_value(objV)
-    f_pb = range_obj[0]
-    f_pg = range_obj[1]
-
-    os_h = []
-    for obj_num in range(objV.shape[1]):
-        os_h.append(
-            np.abs(np.max(objV[:, obj_num]) - np.min(objV[:, obj_num]))
-            / np.abs(f_pb[obj_num] - f_pg[obj_num])
-        )
-    os = np.prod(os_h)
-    return os
-
-
-def distribution_metric(objV, range_obj):
-    def distance(_sorted_objV):
-        d = []
-        for obj_num in range(_sorted_objV.shape[1]):
-            d.append(np.abs(np.diff(_sorted_objV[:, obj_num])))
-        return d
-
-    objV = sort_obj_value(objV)
-    d = distance(objV)
-    f_pb = range_obj[0]
-    f_pg = range_obj[1]
-    dm_h = []
-    for obj_num in range(objV.shape[1]):
-        upper = np.std(d[obj_num]) / np.mean(d[obj_num])
-        bottom = np.abs(np.max(objV[:, obj_num]) - np.min(objV[:, obj_num])) / np.abs(
-            f_pb[obj_num] - f_pg[obj_num]
-        )
-        dm_h.append(upper / bottom)
-    dm = sum(dm_h) / objV.shape[0]
-    return dm
-
-
-def sort_obj_value(objV):
-    objV = np.unique(objV, axis=0)
-    objV = objV[objV[:, 0].argsort()]
-    return objV
-
-
-def find_utopia_nadir(*main_folder):
-    dir_list = []
-    for folder in main_folder:
-        dir_list.append(os.listdir(folder))
-    utopia_list = []
-    nadir_list = []
-    for i, dir_folder in enumerate(dir_list):
-        for dir in dir_folder:
-            objV = np.genfromtxt(f"{main_folder[i]}/{dir}/ObjV.csv", delimiter=",")
-            utopia_list.append(utopia_point_value(objV))
-            nadir_list.append(nadir_point_value(objV))
-    utopia_np = np.array(utopia_list)
-    nadir_np = np.array(nadir_list)
-    utopia_value = np.min(utopia_np, axis=0)
-    nadir_value = np.max(nadir_np, axis=0)
-    return utopia_value, nadir_value
-
-
-def main_distribution_metric(method: DMType):
-    noRep_path = "./[Result]/noRep_10000Gen_noSlice"
-    repRandom_path = "./[Result]/rep_10000Gen_noSlice"
-    repReverse_path = "./[Result]/mode_reverse"
-
-    noRep_folders = os.listdir(noRep_path)
-    repRandom_folders = os.listdir(repRandom_path)
-    repReverse_folders = os.listdir(repReverse_path)
-
-    if method == DMType.SP:
-        metric_method = spacing_metric
-    elif method == DMType.OS:
-        metric_method = overall_pareto_spread
-        utopia_nadir = find_utopia_nadir(noRep_path, repRandom_path, repReverse_path)
-    elif method == DMType.DM:
-        metric_method = distribution_metric
-        utopia_nadir = find_utopia_nadir(noRep_path, repRandom_path, repReverse_path)
-
-    folders = [noRep_folders, repRandom_folders, repReverse_folders]
-    folders_path = [noRep_path, repRandom_path, repReverse_path]
-    metric_all_folder = []
-    metric_mean = []
-    metric_std = []
-    for i in range(3):
-        metric = []
-        for dir in folders[i]:
-            objV = np.genfromtxt(f"{folders_path[i]}/{dir}/ObjV.csv", delimiter=",")
-            if method == DMType.SP:
-                metric.append(metric_method(objV))
-            else:
-                metric.append(metric_method(objV, utopia_nadir))
-        metric_all_folder.append(metric)
-        metric_mean.append(np.mean(metric))
-        metric_std.append(np.std(metric))
-    return metric_all_folder, metric_mean, metric_std
-
-
 def main():
     folderName = "50_points/211111-215630"
     dr = DrawRobots(folderName)
@@ -332,80 +183,216 @@ def main():
     dr.draw_manuf_route()
 
 
-def main_CMeasurement():
-    def plot_vs(obj_rep, obj_noRep, value_rep, value_noRep, rep_filename, noRep_filename):
-        (p1,) = plt.plot(obj_rep[:, 0], obj_rep[:, 1], "ro")
-        (p2,) = plt.plot(obj_noRep[:, 0], obj_noRep[:, 1], "bo")
-        plt.xlabel("total angle changes of every robots")
-        plt.ylabel("std of every robots' angle changes")
-        plt.legend([p1, p2], [f"rep, vs no_rep={value_rep}", f"no_rep, vs rep={value_noRep}"])
-        plt.title(f"{rep_filename}(rep) vs {noRep_filename}(noRep)")
+class IndexComparision:
+    def _manhattan_distance(sorted_objV) -> List:
+        d = []
+        for i in range(sorted_objV.shape[0]):
+            di = []
+            for i_other in range(sorted_objV.shape[0]):
+                if i != i_other:
+                    sum_diff = 0
+                    for obj_num in range(sorted_objV.shape[1]):
+                        temp = np.abs(sorted_objV[i, obj_num] - sorted_objV[i_other, obj_num])
+                        sum_diff = sum_diff + temp
+                    di.append(sum_diff)
+            d.append(min(di))
+        return d
 
-    folder_self_path = "./[Result]/noRep_10000Gen_noSlice"
-    folder_other_path = "./[Result]/rep_10000Gen_noSlice"
+    def _spacing_metric(objV):
+        objV = IndexComparision._sort_obj_value(objV)
+        dist = IndexComparision._manhattan_distance(objV)
+        dist_count = len(dist)
+        dist_np = np.array(dist)
+        dist_mean = np.mean(dist)
+        sp = np.sqrt(np.sum(np.square(dist_np - dist_mean)) / (dist_count - 1))
+        return sp
 
-    folder_self_list = os.listdir(folder_self_path)
-    folder_other_list = os.listdir(folder_other_path)
-    datetime_now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-    path_output = f"./[Result]/c_measurement/{datetime_now}"
-    Path(f"{path_output}/figure").mkdir(parents=True, exist_ok=True)
+    def _utopia_point_value(objV) -> List:
+        try:
+            if objV.shape[1] != 2:
+                raise ArgumentError(
+                    f"number of objectives should be 2 for this method, but now is {objV.shape[1]}"
+                )
+        except ArgumentError as e:
+            print(repr(e))
+            raise
+        objV = IndexComparision._sort_obj_value(objV)
+        return [objV[0, 0], objV[-1, 1]]
 
-    win_self_count = 0
-    win_other_count = 0
-    equal_count = 0
-    self_vs_other = np.zeros((0, 1))
-    other_vs_self = np.zeros((0, 1))
-    for myself, other in zip(folder_self_list, folder_other_list):
-        obj_self_path = f"{folder_self_path}/{myself}/ObjV.csv"
-        obj_self = np.genfromtxt(obj_self_path, delimiter=",")
-        obj_self = np.unique(obj_self, axis=0)
-        # if obj_noRep.shape[0] >= 20:
-        obj_other_path = f"{folder_other_path}/{other}/ObjV.csv"
-        obj_other = np.genfromtxt(obj_other_path, delimiter=",")
-        obj_other = np.unique(obj_other, axis=0)
-        # if obj_rep.shape[0] >= 20:
-        c_value_self = c_measurement(obj_self, obj_other)
-        c_value_other = c_measurement(obj_other, obj_self)
-        self_vs_other = np.vstack((self_vs_other, c_value_self))
-        other_vs_self = np.vstack((other_vs_self, c_value_other))
+    def _nadir_point_value(objV):
+        try:
+            if objV.shape[1] != 2:
+                raise ArgumentError(
+                    f"number of objectives should be 2 for this method, but now is {objV.shape[1]}"
+                )
+        except ArgumentError as e:
+            print(repr(e))
+            raise
+        objV = IndexComparision._sort_obj_value(objV)
+        return [objV[-1, 0], objV[0, 1]]
 
-        if c_value_self > c_value_other:
-            win_self_count += 1
-        if c_value_self < c_value_other:
-            win_other_count += 1
-        if c_value_self == c_value_other:
-            equal_count += 1
+    def _overall_pareto_spread(objV, range_obj):
+        objV = IndexComparision._sort_obj_value(objV)
+        f_pb = range_obj[0]
+        f_pg = range_obj[1]
 
-        plot_vs(obj_other, obj_self, c_value_other, c_value_self, other, myself)
-        plt.savefig(f"{path_output}/figure/{other}_vs_{myself}.png")
-        plt.close()
-        plt.cla()
-        plt.clf()
-    # self_vs_other_mean = np.mean(self_vs_other)
-    # self_vs_other_std = np.std(self_vs_other)
-    # other_vs_self_mean = np.mean(other_vs_self)
-    # other_vs_self_std = np.std(other_vs_self)
-    # mean_std = np.array([[self_vs_other_mean, other_vs_self_mean], [self_vs_other_std, other_vs_self_std]])
-    fileoutput = np.hstack((self_vs_other, other_vs_self))
-    fileoutput = np.vstack((fileoutput, np.array([win_self_count, win_other_count])))
-    np.savetxt(f"{path_output}/result.csv", fileoutput, delimiter=",")
+        os_h = []
+        for obj_num in range(objV.shape[1]):
+            os_h.append(
+                np.abs(np.max(objV[:, obj_num]) - np.min(objV[:, obj_num]))
+                / np.abs(f_pb[obj_num] - f_pg[obj_num])
+            )
+        os = np.prod(os_h)
+        return os
 
+    def _distribution_metric(objV, range_obj):
+        def _distance(_sorted_objV):
+            d = []
+            for obj_num in range(_sorted_objV.shape[1]):
+                d.append(np.abs(np.diff(_sorted_objV[:, obj_num])))
+            return d
 
-def main_metric_compare():
-    method_list = [DMType.SP, DMType.OS, DMType.DM]
-    sheet_name = ["SP", "OS", "DM"]
-    writer = pd.ExcelWriter(
-        f"./[Result]/metrics_compare/metrics{datetime.datetime.now().strftime('%y%m%d-%H%M%S')}.xlsx",
-        engine="xlsxwriter",
-    )
-    for i, md in enumerate(method_list):
-        res = main_distribution_metric(md)
-        print(res[1], res[2])
-        df = pd.DataFrame(res[0]).T
-        df.columns = ["noRep", "rep_random", "rep_reverse"]
-        df.to_excel(writer, sheet_name=sheet_name[i])
-        # print(res)
-    writer.save()
+        objV = IndexComparision._sort_obj_value(objV)
+        d = _distance(objV)
+        f_pb = range_obj[0]
+        f_pg = range_obj[1]
+        dm_h = []
+        for obj_num in range(objV.shape[1]):
+            upper = np.std(d[obj_num]) / np.mean(d[obj_num])
+            bottom = np.abs(np.max(objV[:, obj_num]) - np.min(objV[:, obj_num])) / np.abs(
+                f_pb[obj_num] - f_pg[obj_num]
+            )
+            dm_h.append(upper / bottom)
+        dm = sum(dm_h) / objV.shape[0]
+        return dm
+
+    def _sort_obj_value(objV):
+        objV = np.unique(objV, axis=0)
+        objV = objV[objV[:, 0].argsort()]
+        return objV
+
+    def _find_utopia_nadir(*main_folder):
+        dir_list = []
+        for folder in main_folder:
+            dir_list.append(os.listdir(folder))
+        utopia_list = []
+        nadir_list = []
+        for i, dir_folder in enumerate(dir_list):
+            for dir in dir_folder:
+                objV = np.genfromtxt(f"{main_folder[i]}/{dir}/ObjV.csv", delimiter=",")
+                utopia_list.append(IndexComparision._utopia_point_value(objV))
+                nadir_list.append(IndexComparision._nadir_point_value(objV))
+        utopia_np = np.array(utopia_list)
+        nadir_np = np.array(nadir_list)
+        utopia_value = np.min(utopia_np, axis=0)
+        nadir_value = np.max(nadir_np, axis=0)
+        return utopia_value, nadir_value
+
+    def main_distribution_metric(method: DMType, *folders_paths):
+        # noRep_path = "./[Result]/noRep_10000Gen_noSlice"
+        # repRandom_path = "./[Result]/rep_10000Gen_noSlice"
+        # repReverse_path = "./[Result]/mode_reverse"
+
+        folders_lists = []
+        for path in folders_paths:
+            folders_lists.append(os.listdir(path))
+
+        if method == DMType.SP:
+            metric_method = IndexComparision._spacing_metric
+        elif method == DMType.OS:
+            metric_method = IndexComparision._overall_pareto_spread
+            utopia_nadir = IndexComparision._find_utopia_nadir(*folders_paths)
+        elif method == DMType.DM:
+            metric_method = IndexComparision._distribution_metric
+            utopia_nadir = IndexComparision._find_utopia_nadir(*folders_paths)
+
+        folders = folders_lists
+        folders_path = [ph for ph in folders_paths]
+        metric_all_folder = []
+        metric_mean = []
+        metric_std = []
+        for i in range(len(folders)):
+            metric = []
+            for dir in folders[i]:
+                objV = np.genfromtxt(f"{folders_path[i]}/{dir}/ObjV.csv", delimiter=",")
+                if method == DMType.SP:
+                    metric.append(metric_method(objV))
+                else:
+                    metric.append(metric_method(objV, utopia_nadir))
+            metric_all_folder.append(metric)
+            metric_mean.append(np.mean(metric))
+            metric_std.append(np.std(metric))
+        return metric_all_folder, metric_mean, metric_std
+
+    def main_cIndex(self_path: str, other_path: str, is_plot: bool = False) -> np.ndarray:
+        def plot_vs(obj_rep, obj_noRep, value_rep, value_noRep, rep_filename, noRep_filename):
+            (p1,) = plt.plot(obj_rep[:, 0], obj_rep[:, 1], "ro")
+            (p2,) = plt.plot(obj_noRep[:, 0], obj_noRep[:, 1], "bo")
+            plt.xlabel("total angle changes of every robots")
+            plt.ylabel("std of every robots' angle changes")
+            plt.legend([p1, p2], [f"rep, vs no_rep={value_rep}", f"no_rep, vs rep={value_noRep}"])
+            plt.title(f"{rep_filename}(rep) vs {noRep_filename}(noRep)")
+
+        folder_self_path = self_path
+        folder_other_path = other_path
+
+        folder_self_list = os.listdir(folder_self_path)
+        folder_other_list = os.listdir(folder_other_path)
+        datetime_now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
+        path_output = f"./[Result]/c_measurement/{datetime_now}"
+        Path(f"{path_output}/figure").mkdir(parents=True, exist_ok=True)
+
+        win_self_count = 0
+        win_other_count = 0
+        equal_count = 0
+        self_vs_other = np.zeros((0, 1))
+        other_vs_self = np.zeros((0, 1))
+        for myself, other in zip(folder_self_list, folder_other_list):
+            obj_self_path = f"{folder_self_path}/{myself}/ObjV.csv"
+            obj_self = np.genfromtxt(obj_self_path, delimiter=",")
+            obj_self = np.unique(obj_self, axis=0)
+            # if obj_noRep.shape[0] >= 20:
+            obj_other_path = f"{folder_other_path}/{other}/ObjV.csv"
+            obj_other = np.genfromtxt(obj_other_path, delimiter=",")
+            obj_other = np.unique(obj_other, axis=0)
+            # if obj_rep.shape[0] >= 20:
+            c_value_self = c_measurement(obj_self, obj_other)
+            c_value_other = c_measurement(obj_other, obj_self)
+            self_vs_other = np.vstack((self_vs_other, c_value_self))
+            other_vs_self = np.vstack((other_vs_self, c_value_other))
+
+            if c_value_self > c_value_other:
+                win_self_count += 1
+            if c_value_self < c_value_other:
+                win_other_count += 1
+            if c_value_self == c_value_other:
+                equal_count += 1
+            if is_plot:
+                plot_vs(obj_other, obj_self, c_value_other, c_value_self, other, myself)
+                plt.savefig(f"{path_output}/figure/{other}_vs_{myself}.png")
+                plt.close()
+                plt.cla()
+                plt.clf()
+        compare_index = np.hstack((self_vs_other, other_vs_self))
+        win_count = [win_self_count, win_other_count]
+        # np.savetxt(f"{path_output}/c_result.csv", fileoutput, delimiter=",")
+        return compare_index, win_count
+
+    def main_save_metric_comparision():
+        method_list = [DMType.SP, DMType.OS, DMType.DM]
+        sheet_name = ["SP", "OS", "DM"]
+        writer = pd.ExcelWriter(
+            f"./[Result]/metrics_compare/{datetime.datetime.now().strftime('%y%m%d-%H%M%S')}.xlsx",
+            engine="xlsxwriter",
+        )
+        for i, md in enumerate(method_list):
+            res = IndexComparision.main_distribution_metric(md)
+            print(res[1], res[2])
+            df = pd.DataFrame(res[0]).T
+            df.columns = ["noRep", "rep_random", "rep_reverse"]
+            df.to_excel(writer, sheet_name=sheet_name[i])
+            # print(res)
+        writer.save()
 
 
 class Single_Robot:
@@ -491,4 +478,10 @@ if __name__ == "__main__":
     # objV = np.genfromtxt("./[Result]/mode_reverse/220128-174038/ObjV.csv", delimiter=",")
     # overall_pareto_spread(objV)
     # main_metric_compare()
-    Single_Robot.ik_list()
+
+    folder_self_path = "./[Result]/Robot_2/noStep/Gen10000/no_replace"
+    folder_other_path = "./[Result]/Robot_2/noStep/Gen10000/random/Hamming40"
+    res_c = IndexComparision.main_cIndex(folder_self_path, folder_other_path)
+    res_dm = IndexComparision.main_distribution_metric(DMType.DM, folder_self_path, folder_other_path)
+    print()
+    # Single_Robot.ik_list()
