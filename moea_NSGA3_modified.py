@@ -94,7 +94,7 @@ class moea_NSGA3_modified(ea.MoeaAlgorithm):
         if prophetPop is not None:
             population = (prophetPop + population)[:NIND]  # 插入先知种群
         # ===========================开始进化============================
-        gen = 0
+        gen = 1
         population.isFirstImp = False
         while self.terminated(population) is False:
             gen += 1
@@ -108,7 +108,10 @@ class moea_NSGA3_modified(ea.MoeaAlgorithm):
             if gen % 1000 == 0:
                 np.savetxt(f"./Result/Chrom_per1000/chrom_gen_{gen}.csv", population.Chrom, delimiter=",")
             if self.problem.ccv3.config.replace_chromo:
-                self.problem.ccv3.replace_chromosome(offspring, self.problem.ccv3.config.replace_chromo_dist)
+                if gen < self.MAXGEN:
+                    self.problem.ccv3.replace_chromosome(
+                        offspring, self.problem.ccv3.config.replace_chromo_dist
+                    )
             # 重插入生成新一代种群
             population = self.reinsertion(population, offspring, NIND, uniformPoint)
         self.problem.logging.save_chrom(population.Chrom)
