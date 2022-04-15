@@ -1,8 +1,12 @@
+from argparse import ArgumentError
+from tkinter import N
+from matplotlib import pyplot as plt
 import numpy as np
 from robotCalc_pygeos import RobotCalc_pygeos, Coord
 from robotInfo import Config, Robot, Position
 from typing import List, Tuple, Optional
 import functools
+import sympy
 
 # from caching import np_cache
 
@@ -316,6 +320,12 @@ class ChromoCalcV3:
 
         return totalInt_q_rbs, totalAngle_rbs
 
+    def interpolation_avg_velocity(
+        self, chromosome: np.ndarray
+    ) -> Optional[Tuple[List[np.ndarray], np.ndarray]]:
+        pass
+        # return totalInt_q_rbs, totalAngle_rbs
+
     def _get_interp_slicing(
         self, totalInt_q_rbs: List[np.ndarray], level: int, preInd
     ) -> Optional[Tuple[List[np.ndarray], bool, np.ndarray]]:
@@ -558,3 +568,218 @@ class ChromoCalcV3:
         score_dist, totalDistance = _get_score(totalAngle, collisionScore, totalDistance)
 
         return score_dist, totalDistance
+
+
+class Trajectory:
+    def _traj_s(a, b, c, d, e, f, t):
+        traj_s_poly = np.poly1d([a, b, c, d, e, f])
+        traj_s = traj_s_poly(t)
+        t_s = np.hstack((t[:, None], traj_s[:, None]))
+        return t_s
+
+    def _traj_v(a, b, c, d, e, t):
+        traj_v_poly = np.poly1d([5 * a, 4 * b, 3 * c, 2 * d, e])
+        traj_v = traj_v_poly(t)
+        t_v = np.hstack((t[:, None], traj_v[:, None]))
+        return t_v
+
+    def _traj_a(a, b, c, d, t):
+        traj_a_poly = np.poly1d([20 * a, 12 * b, 6 * c, 2 * d])
+        traj_a = traj_a_poly(t)
+        t_a = np.hstack((t[:, None], traj_a[:, None]))
+        return t_a
+
+    def quintic_polynomial_matrix(
+        step_count: int,
+        t_start: float,
+        t_end: float,
+        s_start: float,
+        s_end: float,
+        v_start=0.0,
+        v_end=0.0,
+        a_start=0.0,
+        a_end=0.0,
+        nargout=1,
+    ):
+        poly_martix = np.array(
+            [
+                [t_start ** 5, t_start ** 4, t_start ** 3, t_start ** 2, t_start, 1],
+                [t_end ** 5, t_end ** 4, t_end ** 3, t_end ** 2, t_end, 1],
+                [5 * (t_start ** 4), 4 * (t_start ** 3), 3 * (t_start ** 2), 2 * t_start, 1, 0],
+                [5 * (t_end ** 4), 4 * (t_end ** 3), 3 * (t_end ** 2), 2 * t_end, 1, 0],
+                [20 * (t_start ** 3), 12 * (t_start ** 2), 6 * t_start, 2, 0, 0],
+                [20 * (t_end ** 3), 12 * (t_end ** 2), 6 * t_end, 2, 0, 0],
+            ]
+        )
+        traj_obj = np.array([s_start, s_end, v_start, v_end, a_start, a_end])
+        traj_obj = traj_obj[:, None]
+        poly_martix_inv = np.linalg.inv(poly_martix)
+        coeffs = poly_martix_inv.dot(traj_obj)
+        a, b, c, d, e, f = coeffs[0, 0], coeffs[1, 0], coeffs[2, 0], coeffs[3, 0], coeffs[4, 0], coeffs[5, 0]
+        print(a, b, c, d, e, f)
+        time_step = np.linspace(t_start, t_end, step_count)
+        if nargout == 1:
+            s = Trajectory._traj_s(a, b, c, d, e, f, time_step)
+            return s
+        if nargout == 2:
+            s = Trajectory._traj_s(a, b, c, d, e, f, time_step)
+            v = Trajectory._traj_v(a, b, c, d, e, time_step)
+            return s, v
+        if nargout == 3:
+            s = Trajectory._traj_s(a, b, c, d, e, f, time_step)
+            v = Trajectory._traj_v(a, b, c, d, e, time_step)
+            a = Trajectory._traj_a(a, b, c, d, time_step)
+            return s, v, a
+        try:
+            if nargout not in [1, 2, 3]:
+                raise ArgumentError("nargout should be 1 or 2 or 3")
+        except ArgumentError as e:
+            print(repr(e))
+            raise
+
+    def plot_trajectory(*trajs):
+        plot_count = len(trajs)
+        fig, axs = plt.subplots(plot_count, 1)
+        for i, p in enumerate(trajs):
+            axs[i].plot(p[:, 0], p[:, 1])
+            if i == 0:
+                axs[i].set_title("s")
+            if i == 1:
+                axs[i].set_title("v")
+            if i == 2:
+                axs[i].set_title("a")
+        plt.show()
+
+    def get_trajectory(
+        angle_start: np.ndarray, angle_stop: np.ndarray, mean_ang_v, step_freq=1 / 20, is_test=False
+    ):
+        if angle_start.ndim == 2:
+            angle_start = np.squeeze(angle_start)
+        if angle_stop.ndim == 2:
+            angle_stop = np.squeeze(angle_stop)
+
+        t_start = 0
+        t_end = np.max(np.abs(angle_stop - angle_start)) / mean_ang_v
+        joints_count = len(angle_start)
+
+        step_count = int((t_end - t_start) / step_freq)
+        if step_count < 3:
+            step_count = 2
+
+        s_joints = np.empty((step_count, 0))
+        v_all = []
+        for j in range(joints_count):
+            s, v, a = Trajectory.quintic_polynomial(
+                step_count, t_start, t_end, angle_start[j], angle_stop[j], nargout=3
+            )
+            if is_test:
+                # ------------------------------------------ #
+                v_all.append(np.mean(v))
+                print(f"max v for joint {j+1} = {np.degrees(np.max(v)):.4f}")
+                print(f"mean v for joint {j+1} = {np.degrees(np.mean(v)):.4f}")
+                print("")
+                Trajectory.plot_trajectory(s, v, a)
+                # ------------------------------------------ #
+
+            s_joints = np.hstack((s_joints, s[:, 0:1]))
+        if is_test:
+            print(f"mean v for all joints = {np.degrees(np.mean(v_all)):.4f}")
+        return s_joints
+
+    def quintic_polynomial(
+        step_count: int,
+        t_start: float,
+        t_end: float,
+        s_start: float,
+        s_end: float,
+        v_start=0.0,
+        v_end=0.0,
+        a_start=0.0,
+        a_end=0.0,
+        nargout=1,
+    ):
+
+        a = (
+            (6 / (t_start - t_end) ** 5) * (s_start - s_end)
+            - (3 / (t_start + t_end) ** 4) * (v_start + v_end)
+            + (1 / 2 * (t_start - t_end) ** 3) * (a_start - a_end)
+        )
+
+        b = (
+            ((-15 * (t_start + t_end)) / (t_start - t_end) ** 5) * (s_start - s_end)
+            + (1 / (t_start - t_end) ** 4)
+            * ((7 * t_start + 8 * t_end) * v_start + (8 * t_start + 7 * t_end) * v_end)
+            - (1 / (2 * (t_start - t_end) ** 3))
+            * ((2 * t_start + 3 * t_end) * a_start - (3 * t_start + 2 * t_end) * a_end)
+        )
+
+        c = (
+            ((10 * (t_start ** 2 + 4 * t_start * t_end + t_end ** 2)) / ((t_start - t_end) ** 5))
+            * (s_start - s_end)
+            - (2 / (t_start - t_end) ** 4)
+            * (
+                (2 * t_start ** 2 + 10 * t_start * t_end + 3 * t_end ** 2) * v_start
+                + (3 * t_start ** 2 + 10 * t_start * t_end + 2 * t_end ** 2) * v_end
+            )
+            + (1 / 2 * (t_start - t_end) ** 3)
+            * (
+                (t_start ** 2 + 6 * t_start * t_end + 3 * t_end ** 2) * a_start
+                - (3 * t_start ** 2 + 6 * t_start * t_end + t_end ** 2) * a_end
+            )
+        )
+
+        d = (
+            ((-30 * t_start * t_end * (t_start + t_end)) / ((t_start - t_end) ** 5)) * (s_start - s_end)
+            + ((6 * t_start * t_end) / (t_start - t_end) ** 4)
+            * ((2 * t_start + 3 * t_end) * v_start + (3 * t_start + 2 * t_end) * v_end)
+            - (1 / 2 * (t_start - t_end) ** 3)
+            * (
+                t_end * (3 * t_start ** 2 + 6 * t_start * t_end + t_end ** 2) * a_start
+                - t_start * (t_start ** 2 + 6 * t_start * t_end + 3 * t_end ** 2) * a_end
+            )
+        )
+
+        e = (
+            (30 * t_start ** 2 * t_end ** 2) / ((t_start - t_end) ** 5) * (s_start - s_end)
+            + (1 / (t_start - t_end) ** 4)
+            * (
+                t_end ** 2 * (-6 * t_start + t_end) * (2 * t_start + t_end) * v_start
+                - t_start ** 2 * (-t_start + 6 * t_end) * (t_start + 2 * t_end) * v_end
+            )
+            + ((t_start * t_end) / (2 * (t_start - t_end) ** 3))
+            * ((t_end * (3 * t_start + 2 * t_end) * a_start) - (t_start * (2 * t_start + 3 * t_end) * a_end))
+        )
+
+        f = -(
+            (1 / (t_start - t_end) ** 5)
+            * (
+                t_end ** 3 * (10 * t_start ** 2 - 5 * t_start * t_end + t_end ** 2) * s_start
+                - t_start ** 3 * (t_start ** 2 - 5 * t_start * t_end + 10 * t_end ** 2) * s_end
+            )
+            + (t_start * t_end / (t_start - t_end) ** 4)
+            * (t_end ** 2 * (4 * t_start - t_end) * v_start + t_start ** 2 * (-t_start + 4 * t_end) * v_end)
+            - (t_start ** 2 * t_end ** 2)
+            / (2 * (t_start - t_end) ** 3)
+            * (t_end * a_start - t_start * a_end)
+        )
+        print(a, b, c, d, e, f)
+
+        time_step = np.linspace(t_start, t_end, step_count)
+        if nargout == 1:
+            s = Trajectory._traj_s(a, b, c, d, e, f, time_step)
+            return s
+        if nargout == 2:
+            s = Trajectory._traj_s(a, b, c, d, e, f, time_step)
+            v = Trajectory._traj_v(a, b, c, d, e, time_step)
+            return s, v
+        if nargout == 3:
+            s = Trajectory._traj_s(a, b, c, d, e, f, time_step)
+            v = Trajectory._traj_v(a, b, c, d, e, time_step)
+            a = Trajectory._traj_a(a, b, c, d, time_step)
+            return s, v, a
+        try:
+            if nargout not in [1, 2, 3]:
+                raise ArgumentError("nargout should be 1 or 2 or 3")
+        except ArgumentError as e:
+            print(repr(e))
+            raise
