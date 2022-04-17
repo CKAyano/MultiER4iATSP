@@ -299,7 +299,7 @@ class ChromoCalcV3:
         joints_count = self.config.org_pos.size
 
         len_pointIndex = len(self.robots[0].point_index)
-        totalInt_q_rbs = [np.zeros((0, joints_count))] * 4
+        totalInt_q_rbs = [np.zeros((0, joints_count))] * self.config.robots_count
         totalAngle_rbs = 0
         for i in range(len_pointIndex):
             if is_firstLoop:
@@ -669,8 +669,8 @@ class Trajectory:
         joints_count = len(angle_start)
 
         step_count = int((t_end - t_start) / step_freq)
-        if step_count < 3:
-            step_count = 2
+        if step_count <= 2:
+            return np.array([[t_start], [t_end]]), np.vstack((angle_start, angle_stop))
 
         s_joints = np.empty((step_count, 0))
         v_all = []
@@ -769,7 +769,9 @@ class Trajectory:
             / (2 * (t_start - t_end) ** 3)
             * (t_end * a_start - t_start * a_end)
         )
-        print(a, b, c, d, e, f)
+        # print(a, b, c, d, e, f)
+        # if np.isnan(a):
+        #     print()
 
         time_step = np.linspace(t_start, t_end, step_count)
         if nargout == 1:
