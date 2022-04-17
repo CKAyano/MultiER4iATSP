@@ -1,0 +1,13 @@
+start time:              220323-141837
+number of robots:        4
+replace chromosome:      True
+adjust chromosome:       True
+fix init chromosome:     True
+points range:            [[100, 800], [-350, 350], [50, 50]]
+number of points:        100
+link width:              200
+
+number of generation:    [100000]
+number of chromosome:    50
+
+pass time:               11 days, 8:52:35.957264(982355.9572639465 secs)
