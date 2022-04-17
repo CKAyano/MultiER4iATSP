@@ -1,12 +1,9 @@
 from argparse import ArgumentError
-from tkinter import N
 from matplotlib import pyplot as plt
 import numpy as np
 from robotCalc_pygeos import RobotCalc_pygeos, Coord
 from robotInfo import Config, Robot, Position
 from typing import List, Tuple, Optional
-import functools
-import sympy
 
 # from caching import np_cache
 
@@ -230,27 +227,12 @@ class ChromoCalcV3:
                 (self.robots[i].point_index, appendArray, -1)
             )  # [4, 5, -1, -1]
 
-    def _get_interp_oneSeq(
-        self, checkPoints_count: int, q_1_best: np.ndarray, q_2_best: np.ndarray
-    ) -> np.ndarray:
-
-        if q_1_best.ndim == 1:
-            int_q = np.expand_dims(q_1_best, axis=0)
-        if checkPoints_count == 0:
-            int_q = np.vstack((int_q, q_2_best))
-        else:
-            offset_q = (q_2_best - q_1_best) / checkPoints_count
-            for i in range(checkPoints_count):
-                int_q = np.vstack((int_q, int_q[i, :] + offset_q))
-        int_q = np.delete(int_q, 0, axis=0)
-        return int_q
-
-    def _get_angle_offset(
+    def _get_angle_changes(
         self, p_id_rbs: List[int], q_1_best_rbs: List[np.ndarray]
     ) -> Optional[Tuple[List[np.ndarray], List[np.ndarray]]]:
 
         q_2_best_rbs = []
-        angOffset_rbs = []
+        angle_changes_rbs = []
         for rb in range(self.config.robots_count):
             if p_id_rbs[rb] == -1:
                 q_2_best_rbs.append(self.config.org_pos)
@@ -260,27 +242,54 @@ class ChromoCalcV3:
                 is_q_nan = np.isnan(q_2_best_rbs[rb])
                 if np.any(is_q_nan):
                     return None
-            angOffset_rbs.append(np.degrees(np.abs(q_2_best_rbs[rb] - q_1_best_rbs[rb])))
+            angle_changes_rbs.append(np.degrees(np.abs(q_2_best_rbs[rb] - q_1_best_rbs[rb])))
 
-        return angOffset_rbs, q_2_best_rbs
+        return angle_changes_rbs, q_2_best_rbs
 
-    def _get_interp_robots(
+    def _get_interp_max_deg_between_points(
+        self, max_deg: int, q_1_best: np.ndarray, q_2_best: np.ndarray
+    ) -> np.ndarray:
+
+        if q_1_best.ndim == 1:
+            int_q = np.expand_dims(q_1_best, axis=0)
+        if max_deg == 0:
+            int_q = np.vstack((int_q, q_2_best))
+        else:
+            offset_q = (q_2_best - q_1_best) / max_deg
+            for i in range(max_deg):
+                int_q = np.vstack((int_q, int_q[i, :] + offset_q))
+        int_q = np.delete(int_q, 0, axis=0)
+        return int_q
+
+    def _get_interp_poly_traj_between_points(self, q_1_best: np.ndarray, q_2_best: np.ndarray):
+        _, int_q = Trajectory.get_trajectory(
+            q_1_best, q_2_best, self.config.mean_motion_velocity_rad, self.config.interp_step_freq
+        )
+        # int_q_out = int_q[1:, :]
+        return int_q[1:, :]
+
+    def _get_interp_for_all_robots(
         self, q_1_best_rbs: List[np.ndarray], p_id_rbs: List[int]
     ) -> Optional[Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]]:
 
-        _angleOffset = self._get_angle_offset(p_id_rbs, q_1_best_rbs)
-        if _angleOffset is None:
+        _angle_changes = self._get_angle_changes(p_id_rbs, q_1_best_rbs)
+        if _angle_changes is None:
             return None
-        angOffset_rbs, q_2_best_rbs = _angleOffset
+        angle_changes_rbs, q_2_best_rbs = _angle_changes
 
         interp_q_rbs = []
         for rb in range(self.config.robots_count):
-            checkPoints_count = int(np.max(angOffset_rbs[rb]))
-            interp_q_rbs.append(
-                self._get_interp_oneSeq(checkPoints_count, q_1_best_rbs[rb], q_2_best_rbs[rb])
-            )
+            if self.config.interp_mode == "max_deg":
+                max_deg = int(np.max(angle_changes_rbs[rb]))
+                interp_q_rbs.append(
+                    self._get_interp_max_deg_between_points(max_deg, q_1_best_rbs[rb], q_2_best_rbs[rb])
+                )
+            if self.config.interp_mode == "poly_traj":
+                interp_q_rbs.append(
+                    self._get_interp_poly_traj_between_points(q_1_best_rbs[rb], q_2_best_rbs[rb])
+                )
 
-        return interp_q_rbs, q_2_best_rbs, angOffset_rbs
+        return interp_q_rbs, q_2_best_rbs, angle_changes_rbs
 
     def interpolation(self, chromosome: np.ndarray) -> Optional[Tuple[List[np.ndarray], np.ndarray]]:
         self.set_robotsPath(chromosome)
@@ -300,15 +309,15 @@ class ChromoCalcV3:
                 q_1_best = q_2_best
 
             p_id_rbs = [self.robots[rb].point_index[i] for rb in range(self.config.robots_count)]
-            _interp_rbs = self._get_interp_robots(q_1_best, p_id_rbs)
+            _interp_rbs = self._get_interp_for_all_robots(q_1_best, p_id_rbs)
             if _interp_rbs is None:
                 return None
-            int_q, q_2_best, angOffset = _interp_rbs
+            int_q, q_2_best, angle_changes_rbs = _interp_rbs
             for rb in range(self.config.robots_count):
                 totalInt_q_rbs[rb] = np.vstack((totalInt_q_rbs[rb], int_q[rb]))
                 # max_angleOffset[rb] =
                 # totalAngle[rb] = np.vstack((totalAngle[rb], angOffset[rb]))
-            totalAngle_rbs = totalAngle_rbs + np.max(np.array(angOffset), axis=1)
+            totalAngle_rbs = totalAngle_rbs + np.max(np.array(angle_changes_rbs), axis=1)
 
         int_count = [np.shape(totalInt_q_rbs[rb])[0] for rb in range(self.config.robots_count)]
         max_int_count = max(int_count)
@@ -320,13 +329,7 @@ class ChromoCalcV3:
 
         return totalInt_q_rbs, totalAngle_rbs
 
-    def interpolation_avg_velocity(
-        self, chromosome: np.ndarray
-    ) -> Optional[Tuple[List[np.ndarray], np.ndarray]]:
-        pass
-        # return totalInt_q_rbs, totalAngle_rbs
-
-    def _get_interp_slicing(
+    def __SUSPENDED__get_interp_slicing(
         self, totalInt_q_rbs: List[np.ndarray], level: int, preInd
     ) -> Optional[Tuple[List[np.ndarray], bool, np.ndarray]]:
 
@@ -355,14 +358,17 @@ class ChromoCalcV3:
         return totalInt_q_rbs, False, slicingInd
 
     def interpolation_step(self, chromosome: np.ndarray) -> Optional[Tuple[List[np.ndarray], np.ndarray]]:
+
         _interpolation = self.interpolation(chromosome)
+
         if _interpolation is None:
             return None
+        if self.step + 1 == self.num_slicing:
+            return _interpolation
+
         totalInt_q_rbs, totalAngle_rbs = _interpolation
         int_count = totalInt_q_rbs[0].shape[0]
         len_path = np.min([len(self.robots[rb]) for rb in range(self.config.robots_count)])
-        if self.step + 1 == self.num_slicing:
-            return _interpolation
         split_num = int_count // len_path // (self.step + 1)
         if split_num == 0:
             split_num = 1
@@ -401,7 +407,7 @@ class ChromoCalcV3:
                             return True
         return False
 
-    def score_slicing(self, chromosome, logging) -> Tuple[float, float]:
+    def __SUSPENDED__score_slicing(self, chromosome, logging) -> Tuple[float, float]:
         # chromosome = np.array(hashable_chromosome)
         _interpolation = self.interpolation(chromosome)
         if _interpolation is not None:
@@ -423,7 +429,7 @@ class ChromoCalcV3:
                 preInd = np.zeros(0)
                 while True:
                     levelOfSlicing = levelOfSlicing + 1
-                    checkPoint = self._get_interp_slicing(totalInt_q, levelOfSlicing, preInd)
+                    checkPoint = self.__SUSPENDED__get_interp_slicing(totalInt_q, levelOfSlicing, preInd)
                     if checkPoint is None:
                         collisionScore = 0
                         msg = "Save, but all points on one side!"
@@ -652,7 +658,7 @@ class Trajectory:
 
     def get_trajectory(
         angle_start: np.ndarray, angle_stop: np.ndarray, mean_ang_v, step_freq=1 / 20, is_test=False
-    ):
+    ) -> Tuple[np.ndarray]:
         if angle_start.ndim == 2:
             angle_start = np.squeeze(angle_start)
         if angle_stop.ndim == 2:
@@ -681,10 +687,11 @@ class Trajectory:
                 Trajectory.plot_trajectory(s, v, a)
                 # ------------------------------------------ #
 
-            s_joints = np.hstack((s_joints, s[:, 0:1]))
+            s_joints = np.hstack((s_joints, s[:, 1:2]))
+        # s_joints = np.hstack((s[:, 0:1], s_joints))
         if is_test:
             print(f"mean v for all joints = {np.degrees(np.mean(v_all)):.4f}")
-        return s_joints
+        return s[:, 0:1], s_joints
 
     def quintic_polynomial(
         step_count: int,
