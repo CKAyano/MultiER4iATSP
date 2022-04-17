@@ -140,7 +140,7 @@ def main() -> None:
 
     result_path_1 = f"./[Result]/{filepath_rbcount}/{filepath_step}/Gen{GEN_LIST[-1]}/{filepath_mode}"
 
-    result_path = f"{result_path_1}{result_paht_2}"
+    result_path = f"{result_path_1}{result_paht_2}/{problem.ccv3.config.interp_mode}"
     Path(result_path).mkdir(parents=True, exist_ok=True)
 
     save_pareto("./Result/ObjV.csv")
