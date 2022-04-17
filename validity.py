@@ -21,8 +21,11 @@ import datetime
 
 class DrawRobots:
     def __init__(self, folderName: str) -> None:
-        self.config = Config(f"./[Result]/{folderName}/config.yml")
-        self.points = np.genfromtxt(f"./[Result]/{folderName}/output_point.csv", delimiter=",")
+        if os.path.exists(f"{folderName}/config.yml"):
+            self.config = Config(f"{folderName}/config.yml")
+        else:
+            self.config = Config(f"{folderName}/CONFIG.yml")
+        self.points = np.genfromtxt(f"{folderName}/output_point.csv", delimiter=",")
         self.folderName = folderName
         self.config.link_width = self.config.link_width / 2
         self.rc = RobotCalc_pygeos(self.config)
@@ -63,7 +66,7 @@ class DrawRobots:
         return cph1, cph2
 
     def cph_robots(self, q_best: List[np.ndarray], intPoint) -> bool:
-        ccv3 = ChromoCalcV3(self.config, self.points, 0, 1)
+        ccv3 = ChromoCalcV3(self.config, self.points, 0, 1, [])
         cphs = []
         for rb in range(self.config.robots_count):
             points = self.rc.get_link_points(q_best[rb][intPoint, :], ccv3.robots[rb])
@@ -82,22 +85,25 @@ class DrawRobots:
         r.savefigure(save_path)
 
     def chrom_to_png(self, is_log: Optional[bool] = None):
-        ccv3 = ChromoCalcV3(self.config, self.points, 0, 1)
-        chrom = np.genfromtxt(f"./[Result]/{self.folderName}/Chrom.csv", delimiter=",", dtype="int32")
+        ccv3 = ChromoCalcV3(self.config, self.points, 0, 1, [])
+        chrom = np.genfromtxt(f"{self.folderName}/Chrom.csv", delimiter=",", dtype="int32")
         for chromoInd in range(chrom.shape[0]):
             if is_log:
-                Path(f"./ValidityFigure/{self.folderName}/ChromID_{chromoInd}/log").mkdir(
+                Path(f"./ValidityFigure/{self.folderName[11:]}/ChromID_{chromoInd}/log").mkdir(
                     parents=True, exist_ok=True
                 )
-                logging = Collision_status(0, f"./ValidityFigure/{self.folderName}/ChromID_{chromoInd}/log")
+                logging = Collision_status(
+                    0, f"./ValidityFigure/{self.folderName[11:]}/ChromID_{chromoInd}/log"
+                )
             totalInt_q, _ = ccv3.interpolation(chrom[chromoInd, :])
             points_count = np.shape(totalInt_q[0])[0]
-            Path(f"./ValidityFigure/{self.folderName}/ChromID_{chromoInd}/figure").mkdir(
+            Path(f"./ValidityFigure/{self.folderName[11:]}/ChromID_{chromoInd}/figure").mkdir(
                 parents=True, exist_ok=True
             )
             for intPoint in range(points_count):
                 path = (
-                    f"./ValidityFigure/{self.folderName}/" + f"ChromID_{chromoInd}/figure/figure_{intPoint}"
+                    f"./ValidityFigure/{self.folderName[11:]}/"
+                    + f"ChromID_{chromoInd}/figure/figure_{intPoint}"
                 )
                 try:
                     self.draw(totalInt_q, intPoint, path)
@@ -109,9 +115,9 @@ class DrawRobots:
             _ = ccv3.score_step(chrom[chromoInd, :], logging)
 
     def png_to_gif(self, fps=24):
-        chrom_count = len(os.listdir(f"./ValidityFigure/{self.folderName}"))
+        chrom_count = len(os.listdir(f"./ValidityFigure/{self.folderName[11:]}"))
         for i in range(chrom_count):
-            png_dir = f"./ValidityFigure/{self.folderName}/ChromID_{i}/figure"
+            png_dir = f"./ValidityFigure/{self.folderName[11:]}/ChromID_{i}/figure"
             images = []
             png_list = os.listdir(png_dir)
             sortedList = natsort.natsorted(png_list)
@@ -119,13 +125,13 @@ class DrawRobots:
                 if file_name.endswith(".png"):
                     file_path = os.path.join(png_dir, file_name)
                     images.append(imageio.imread(file_path))
-            path = f"./ValidityFigure/{self.folderName}/ChromID_{i}/animate.gif"
+            path = f"./ValidityFigure/{self.folderName[11:]}/ChromID_{i}/animate.gif"
             imageio.mimsave(path, images, format="GIF", fps=fps)
 
     def draw_manuf_route(self, is_connect: Optional[bool] = None):
-        ccv3 = ChromoCalcV3(self.config, self.points, 0, 1)
-        chroms = np.genfromtxt(f"./[Result]/{self.folderName}/Chrom.csv", delimiter=",", dtype="int32")
-        chrom_count = len(os.listdir(f"./ValidityFigure/{self.folderName}"))
+        ccv3 = ChromoCalcV3(self.config, self.points, 0, 1, [])
+        chroms = np.genfromtxt(f"{self.folderName}/Chrom.csv", delimiter=",", dtype="int32")
+        chrom_count = len(os.listdir(f"./ValidityFigure/{self.folderName[11:]}"))
 
         px = self.points[:, 0]
         py = self.points[:, 1]
@@ -151,7 +157,7 @@ class DrawRobots:
                             color="red",
                         )
 
-            plt.savefig(f"./ValidityFigure/{self.folderName}/ChromID_{c}/manuf_route.png")
+            plt.savefig(f"./ValidityFigure/{self.folderName[11:]}/ChromID_{c}/manuf_route.png")
             plt.show()
 
 
@@ -288,6 +294,12 @@ class IndexComparision:
         nadir_value = np.max(nadir_np, axis=0)
         return utopia_value, nadir_value
 
+    def _remove_private_folder_from_list(folder_list):
+        for folder in folder_list:
+            if folder[:2] == "__":
+                folder_list.remove(folder)
+        return folder_list
+
     def main_distribution_metric(method: DMType, *folders_paths):
         # noRep_path = "./[Result]/noRep_10000Gen_noSlice"
         # repRandom_path = "./[Result]/rep_10000Gen_noSlice"
@@ -295,7 +307,9 @@ class IndexComparision:
 
         folders_lists = []
         for path in folders_paths:
-            folders_lists.append(os.listdir(path))
+            path_list = os.listdir(path)
+            path_list = IndexComparision._remove_private_folder_from_list(path_list)
+            folders_lists.append(path_list)
 
         if method == DMType.SP:
             metric_method = IndexComparision._spacing_metric
@@ -337,7 +351,9 @@ class IndexComparision:
         folder_other_path = other_path
 
         folder_self_list = os.listdir(folder_self_path)
+        folder_self_list = IndexComparision._remove_private_folder_from_list(folder_self_list)
         folder_other_list = os.listdir(folder_other_path)
+        folder_other_list = IndexComparision._remove_private_folder_from_list(folder_other_list)
         datetime_now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
         path_output = f"./[Result]/c_measurement/{datetime_now}"
         Path(f"{path_output}/figure").mkdir(parents=True, exist_ok=True)
@@ -374,7 +390,7 @@ class IndexComparision:
                 plt.cla()
                 plt.clf()
         compare_index = np.hstack((self_vs_other, other_vs_self))
-        win_count = [win_self_count, win_other_count]
+        win_count = [win_self_count, win_other_count, equal_count]
         # np.savetxt(f"{path_output}/c_result.csv", fileoutput, delimiter=",")
         return compare_index, win_count
 
@@ -473,15 +489,27 @@ class Single_Robot:
 
 
 if __name__ == "__main__":
-    # main()
-    # main_CMeasurement()
-    # objV = np.genfromtxt("./[Result]/mode_reverse/220128-174038/ObjV.csv", delimiter=",")
-    # overall_pareto_spread(objV)
-    # main_metric_compare()
+    # dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932")
+    # dr.chrom_to_png()
+
+    # config = Config("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/CONFIG.yml")
+    # points = np.genfromtxt(
+    #     "./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/output_point.csv", delimiter=","
+    # )
+    # ccv3 = ChromoCalcV3(config, points, 0, 1, [])
+    # chrom = np.genfromtxt(
+    #     f"./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/Chrom.csv",
+    #     delimiter=",",
+    #     dtype="int32",
+    # )
+    # test = ccv3.interpolation_step(chrom[3, :])
+    # print()
 
     folder_self_path = "./[Result]/Robot_2/noStep/Gen10000/no_replace"
     folder_other_path = "./[Result]/Robot_2/noStep/Gen10000/random/Hamming40"
     res_c = IndexComparision.main_cIndex(folder_self_path, folder_other_path)
     res_dm = IndexComparision.main_distribution_metric(DMType.DM, folder_self_path, folder_other_path)
-    print()
+    print(res_c[1])
+    print(res_dm[1])
+    print(res_dm[2])
     # Single_Robot.ik_list()

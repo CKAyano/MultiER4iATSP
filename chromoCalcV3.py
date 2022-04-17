@@ -1,8 +1,9 @@
+from argparse import ArgumentError
+from matplotlib import pyplot as plt
 import numpy as np
 from robotCalc_pygeos import RobotCalc_pygeos, Coord
 from robotInfo import Config, Robot, Position
 from typing import List, Tuple, Optional
-import functools
 
 # from caching import np_cache
 
@@ -226,27 +227,12 @@ class ChromoCalcV3:
                 (self.robots[i].point_index, appendArray, -1)
             )  # [4, 5, -1, -1]
 
-    def _get_interp_oneSeq(
-        self, checkPoints_count: int, q_1_best: np.ndarray, q_2_best: np.ndarray
-    ) -> np.ndarray:
-
-        if q_1_best.ndim == 1:
-            int_q = np.expand_dims(q_1_best, axis=0)
-        if checkPoints_count == 0:
-            int_q = np.vstack((int_q, q_2_best))
-        else:
-            offset_q = (q_2_best - q_1_best) / checkPoints_count
-            for i in range(checkPoints_count):
-                int_q = np.vstack((int_q, int_q[i, :] + offset_q))
-        int_q = np.delete(int_q, 0, axis=0)
-        return int_q
-
-    def _get_angle_offset(
+    def _get_angle_changes(
         self, p_id_rbs: List[int], q_1_best_rbs: List[np.ndarray]
     ) -> Optional[Tuple[List[np.ndarray], List[np.ndarray]]]:
 
         q_2_best_rbs = []
-        angOffset_rbs = []
+        angle_changes_rbs = []
         for rb in range(self.config.robots_count):
             if p_id_rbs[rb] == -1:
                 q_2_best_rbs.append(self.config.org_pos)
@@ -256,27 +242,54 @@ class ChromoCalcV3:
                 is_q_nan = np.isnan(q_2_best_rbs[rb])
                 if np.any(is_q_nan):
                     return None
-            angOffset_rbs.append(np.degrees(np.abs(q_2_best_rbs[rb] - q_1_best_rbs[rb])))
+            angle_changes_rbs.append(np.degrees(np.abs(q_2_best_rbs[rb] - q_1_best_rbs[rb])))
 
-        return angOffset_rbs, q_2_best_rbs
+        return angle_changes_rbs, q_2_best_rbs
 
-    def _get_interp_robots(
+    def _get_interp_max_deg_between_points(
+        self, max_deg: int, q_1_best: np.ndarray, q_2_best: np.ndarray
+    ) -> np.ndarray:
+
+        if q_1_best.ndim == 1:
+            int_q = np.expand_dims(q_1_best, axis=0)
+        if max_deg == 0:
+            int_q = np.vstack((int_q, q_2_best))
+        else:
+            offset_q = (q_2_best - q_1_best) / max_deg
+            for i in range(max_deg):
+                int_q = np.vstack((int_q, int_q[i, :] + offset_q))
+        int_q = np.delete(int_q, 0, axis=0)
+        return int_q
+
+    def _get_interp_poly_traj_between_points(self, q_1_best: np.ndarray, q_2_best: np.ndarray):
+        _, int_q = Trajectory.get_trajectory(
+            q_1_best, q_2_best, self.config.mean_motion_velocity_rad, self.config.interp_step_freq
+        )
+        # int_q_out = int_q[1:, :]
+        return int_q[1:, :]
+
+    def _get_interp_for_all_robots(
         self, q_1_best_rbs: List[np.ndarray], p_id_rbs: List[int]
     ) -> Optional[Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]]:
 
-        _angleOffset = self._get_angle_offset(p_id_rbs, q_1_best_rbs)
-        if _angleOffset is None:
+        _angle_changes = self._get_angle_changes(p_id_rbs, q_1_best_rbs)
+        if _angle_changes is None:
             return None
-        angOffset_rbs, q_2_best_rbs = _angleOffset
+        angle_changes_rbs, q_2_best_rbs = _angle_changes
 
         interp_q_rbs = []
         for rb in range(self.config.robots_count):
-            checkPoints_count = int(np.max(angOffset_rbs[rb]))
-            interp_q_rbs.append(
-                self._get_interp_oneSeq(checkPoints_count, q_1_best_rbs[rb], q_2_best_rbs[rb])
-            )
+            if self.config.interp_mode == "max_deg":
+                max_deg = int(np.max(angle_changes_rbs[rb]))
+                interp_q_rbs.append(
+                    self._get_interp_max_deg_between_points(max_deg, q_1_best_rbs[rb], q_2_best_rbs[rb])
+                )
+            if self.config.interp_mode == "poly_traj":
+                interp_q_rbs.append(
+                    self._get_interp_poly_traj_between_points(q_1_best_rbs[rb], q_2_best_rbs[rb])
+                )
 
-        return interp_q_rbs, q_2_best_rbs, angOffset_rbs
+        return interp_q_rbs, q_2_best_rbs, angle_changes_rbs
 
     def interpolation(self, chromosome: np.ndarray) -> Optional[Tuple[List[np.ndarray], np.ndarray]]:
         self.set_robotsPath(chromosome)
@@ -286,7 +299,7 @@ class ChromoCalcV3:
         joints_count = self.config.org_pos.size
 
         len_pointIndex = len(self.robots[0].point_index)
-        totalInt_q_rbs = [np.zeros((0, joints_count))] * 4
+        totalInt_q_rbs = [np.zeros((0, joints_count))] * self.config.robots_count
         totalAngle_rbs = 0
         for i in range(len_pointIndex):
             if is_firstLoop:
@@ -296,15 +309,15 @@ class ChromoCalcV3:
                 q_1_best = q_2_best
 
             p_id_rbs = [self.robots[rb].point_index[i] for rb in range(self.config.robots_count)]
-            _interp_rbs = self._get_interp_robots(q_1_best, p_id_rbs)
+            _interp_rbs = self._get_interp_for_all_robots(q_1_best, p_id_rbs)
             if _interp_rbs is None:
                 return None
-            int_q, q_2_best, angOffset = _interp_rbs
+            int_q, q_2_best, angle_changes_rbs = _interp_rbs
             for rb in range(self.config.robots_count):
                 totalInt_q_rbs[rb] = np.vstack((totalInt_q_rbs[rb], int_q[rb]))
                 # max_angleOffset[rb] =
                 # totalAngle[rb] = np.vstack((totalAngle[rb], angOffset[rb]))
-            totalAngle_rbs = totalAngle_rbs + np.max(np.array(angOffset), axis=1)
+            totalAngle_rbs = totalAngle_rbs + np.max(np.array(angle_changes_rbs), axis=1)
 
         int_count = [np.shape(totalInt_q_rbs[rb])[0] for rb in range(self.config.robots_count)]
         max_int_count = max(int_count)
@@ -316,7 +329,7 @@ class ChromoCalcV3:
 
         return totalInt_q_rbs, totalAngle_rbs
 
-    def _get_interp_slicing(
+    def __SUSPENDED__get_interp_slicing(
         self, totalInt_q_rbs: List[np.ndarray], level: int, preInd
     ) -> Optional[Tuple[List[np.ndarray], bool, np.ndarray]]:
 
@@ -345,14 +358,17 @@ class ChromoCalcV3:
         return totalInt_q_rbs, False, slicingInd
 
     def interpolation_step(self, chromosome: np.ndarray) -> Optional[Tuple[List[np.ndarray], np.ndarray]]:
+
         _interpolation = self.interpolation(chromosome)
+
         if _interpolation is None:
             return None
+        if self.step + 1 == self.num_slicing:
+            return _interpolation
+
         totalInt_q_rbs, totalAngle_rbs = _interpolation
         int_count = totalInt_q_rbs[0].shape[0]
         len_path = np.min([len(self.robots[rb]) for rb in range(self.config.robots_count)])
-        if self.step + 1 == self.num_slicing:
-            return _interpolation
         split_num = int_count // len_path // (self.step + 1)
         if split_num == 0:
             split_num = 1
@@ -391,7 +407,7 @@ class ChromoCalcV3:
                             return True
         return False
 
-    def score_slicing(self, chromosome, logging) -> Tuple[float, float]:
+    def __SUSPENDED__score_slicing(self, chromosome, logging) -> Tuple[float, float]:
         # chromosome = np.array(hashable_chromosome)
         _interpolation = self.interpolation(chromosome)
         if _interpolation is not None:
@@ -413,7 +429,7 @@ class ChromoCalcV3:
                 preInd = np.zeros(0)
                 while True:
                     levelOfSlicing = levelOfSlicing + 1
-                    checkPoint = self._get_interp_slicing(totalInt_q, levelOfSlicing, preInd)
+                    checkPoint = self.__SUSPENDED__get_interp_slicing(totalInt_q, levelOfSlicing, preInd)
                     if checkPoint is None:
                         collisionScore = 0
                         msg = "Save, but all points on one side!"
@@ -558,3 +574,221 @@ class ChromoCalcV3:
         score_dist, totalDistance = _get_score(totalAngle, collisionScore, totalDistance)
 
         return score_dist, totalDistance
+
+
+class Trajectory:
+    def _traj_s(a, b, c, d, e, f, t):
+        traj_s_poly = np.poly1d([a, b, c, d, e, f])
+        traj_s = traj_s_poly(t)
+        t_s = np.hstack((t[:, None], traj_s[:, None]))
+        return t_s
+
+    def _traj_v(a, b, c, d, e, t):
+        traj_v_poly = np.poly1d([5 * a, 4 * b, 3 * c, 2 * d, e])
+        traj_v = traj_v_poly(t)
+        t_v = np.hstack((t[:, None], traj_v[:, None]))
+        return t_v
+
+    def _traj_a(a, b, c, d, t):
+        traj_a_poly = np.poly1d([20 * a, 12 * b, 6 * c, 2 * d])
+        traj_a = traj_a_poly(t)
+        t_a = np.hstack((t[:, None], traj_a[:, None]))
+        return t_a
+
+    def quintic_polynomial_matrix(
+        step_count: int,
+        t_start: float,
+        t_end: float,
+        s_start: float,
+        s_end: float,
+        v_start=0.0,
+        v_end=0.0,
+        a_start=0.0,
+        a_end=0.0,
+        nargout=1,
+    ):
+        poly_martix = np.array(
+            [
+                [t_start ** 5, t_start ** 4, t_start ** 3, t_start ** 2, t_start, 1],
+                [t_end ** 5, t_end ** 4, t_end ** 3, t_end ** 2, t_end, 1],
+                [5 * (t_start ** 4), 4 * (t_start ** 3), 3 * (t_start ** 2), 2 * t_start, 1, 0],
+                [5 * (t_end ** 4), 4 * (t_end ** 3), 3 * (t_end ** 2), 2 * t_end, 1, 0],
+                [20 * (t_start ** 3), 12 * (t_start ** 2), 6 * t_start, 2, 0, 0],
+                [20 * (t_end ** 3), 12 * (t_end ** 2), 6 * t_end, 2, 0, 0],
+            ]
+        )
+        traj_obj = np.array([s_start, s_end, v_start, v_end, a_start, a_end])
+        traj_obj = traj_obj[:, None]
+        poly_martix_inv = np.linalg.inv(poly_martix)
+        coeffs = poly_martix_inv.dot(traj_obj)
+        a, b, c, d, e, f = coeffs[0, 0], coeffs[1, 0], coeffs[2, 0], coeffs[3, 0], coeffs[4, 0], coeffs[5, 0]
+        print(a, b, c, d, e, f)
+        time_step = np.linspace(t_start, t_end, step_count)
+        if nargout == 1:
+            s = Trajectory._traj_s(a, b, c, d, e, f, time_step)
+            return s
+        if nargout == 2:
+            s = Trajectory._traj_s(a, b, c, d, e, f, time_step)
+            v = Trajectory._traj_v(a, b, c, d, e, time_step)
+            return s, v
+        if nargout == 3:
+            s = Trajectory._traj_s(a, b, c, d, e, f, time_step)
+            v = Trajectory._traj_v(a, b, c, d, e, time_step)
+            a = Trajectory._traj_a(a, b, c, d, time_step)
+            return s, v, a
+        try:
+            if nargout not in [1, 2, 3]:
+                raise ArgumentError("nargout should be 1 or 2 or 3")
+        except ArgumentError as e:
+            print(repr(e))
+            raise
+
+    def plot_trajectory(*trajs):
+        plot_count = len(trajs)
+        fig, axs = plt.subplots(plot_count, 1)
+        for i, p in enumerate(trajs):
+            axs[i].plot(p[:, 0], p[:, 1])
+            if i == 0:
+                axs[i].set_title("s")
+            if i == 1:
+                axs[i].set_title("v")
+            if i == 2:
+                axs[i].set_title("a")
+        plt.show()
+
+    def get_trajectory(
+        angle_start: np.ndarray, angle_stop: np.ndarray, mean_ang_v, step_freq=1 / 20, is_test=False
+    ) -> Tuple[np.ndarray]:
+        if angle_start.ndim == 2:
+            angle_start = np.squeeze(angle_start)
+        if angle_stop.ndim == 2:
+            angle_stop = np.squeeze(angle_stop)
+
+        t_start = 0
+        t_end = np.max(np.abs(angle_stop - angle_start)) / mean_ang_v
+        joints_count = len(angle_start)
+
+        step_count = int((t_end - t_start) / step_freq)
+        if step_count <= 2:
+            return np.array([[t_start], [t_end]]), np.vstack((angle_start, angle_stop))
+
+        s_joints = np.empty((step_count, 0))
+        v_all = []
+        for j in range(joints_count):
+            s, v, a = Trajectory.quintic_polynomial(
+                step_count, t_start, t_end, angle_start[j], angle_stop[j], nargout=3
+            )
+            if is_test:
+                # ------------------------------------------ #
+                v_all.append(np.mean(v))
+                print(f"max v for joint {j+1} = {np.degrees(np.max(v)):.4f}")
+                print(f"mean v for joint {j+1} = {np.degrees(np.mean(v)):.4f}")
+                print("")
+                Trajectory.plot_trajectory(s, v, a)
+                # ------------------------------------------ #
+
+            s_joints = np.hstack((s_joints, s[:, 1:2]))
+        # s_joints = np.hstack((s[:, 0:1], s_joints))
+        if is_test:
+            print(f"mean v for all joints = {np.degrees(np.mean(v_all)):.4f}")
+        return s[:, 0:1], s_joints
+
+    def quintic_polynomial(
+        step_count: int,
+        t_start: float,
+        t_end: float,
+        s_start: float,
+        s_end: float,
+        v_start=0.0,
+        v_end=0.0,
+        a_start=0.0,
+        a_end=0.0,
+        nargout=1,
+    ):
+
+        a = (
+            (6 / (t_start - t_end) ** 5) * (s_start - s_end)
+            - (3 / (t_start + t_end) ** 4) * (v_start + v_end)
+            + (1 / 2 * (t_start - t_end) ** 3) * (a_start - a_end)
+        )
+
+        b = (
+            ((-15 * (t_start + t_end)) / (t_start - t_end) ** 5) * (s_start - s_end)
+            + (1 / (t_start - t_end) ** 4)
+            * ((7 * t_start + 8 * t_end) * v_start + (8 * t_start + 7 * t_end) * v_end)
+            - (1 / (2 * (t_start - t_end) ** 3))
+            * ((2 * t_start + 3 * t_end) * a_start - (3 * t_start + 2 * t_end) * a_end)
+        )
+
+        c = (
+            ((10 * (t_start ** 2 + 4 * t_start * t_end + t_end ** 2)) / ((t_start - t_end) ** 5))
+            * (s_start - s_end)
+            - (2 / (t_start - t_end) ** 4)
+            * (
+                (2 * t_start ** 2 + 10 * t_start * t_end + 3 * t_end ** 2) * v_start
+                + (3 * t_start ** 2 + 10 * t_start * t_end + 2 * t_end ** 2) * v_end
+            )
+            + (1 / 2 * (t_start - t_end) ** 3)
+            * (
+                (t_start ** 2 + 6 * t_start * t_end + 3 * t_end ** 2) * a_start
+                - (3 * t_start ** 2 + 6 * t_start * t_end + t_end ** 2) * a_end
+            )
+        )
+
+        d = (
+            ((-30 * t_start * t_end * (t_start + t_end)) / ((t_start - t_end) ** 5)) * (s_start - s_end)
+            + ((6 * t_start * t_end) / (t_start - t_end) ** 4)
+            * ((2 * t_start + 3 * t_end) * v_start + (3 * t_start + 2 * t_end) * v_end)
+            - (1 / 2 * (t_start - t_end) ** 3)
+            * (
+                t_end * (3 * t_start ** 2 + 6 * t_start * t_end + t_end ** 2) * a_start
+                - t_start * (t_start ** 2 + 6 * t_start * t_end + 3 * t_end ** 2) * a_end
+            )
+        )
+
+        e = (
+            (30 * t_start ** 2 * t_end ** 2) / ((t_start - t_end) ** 5) * (s_start - s_end)
+            + (1 / (t_start - t_end) ** 4)
+            * (
+                t_end ** 2 * (-6 * t_start + t_end) * (2 * t_start + t_end) * v_start
+                - t_start ** 2 * (-t_start + 6 * t_end) * (t_start + 2 * t_end) * v_end
+            )
+            + ((t_start * t_end) / (2 * (t_start - t_end) ** 3))
+            * ((t_end * (3 * t_start + 2 * t_end) * a_start) - (t_start * (2 * t_start + 3 * t_end) * a_end))
+        )
+
+        f = -(
+            (1 / (t_start - t_end) ** 5)
+            * (
+                t_end ** 3 * (10 * t_start ** 2 - 5 * t_start * t_end + t_end ** 2) * s_start
+                - t_start ** 3 * (t_start ** 2 - 5 * t_start * t_end + 10 * t_end ** 2) * s_end
+            )
+            + (t_start * t_end / (t_start - t_end) ** 4)
+            * (t_end ** 2 * (4 * t_start - t_end) * v_start + t_start ** 2 * (-t_start + 4 * t_end) * v_end)
+            - (t_start ** 2 * t_end ** 2)
+            / (2 * (t_start - t_end) ** 3)
+            * (t_end * a_start - t_start * a_end)
+        )
+        # print(a, b, c, d, e, f)
+        # if np.isnan(a):
+        #     print()
+
+        time_step = np.linspace(t_start, t_end, step_count)
+        if nargout == 1:
+            s = Trajectory._traj_s(a, b, c, d, e, f, time_step)
+            return s
+        if nargout == 2:
+            s = Trajectory._traj_s(a, b, c, d, e, f, time_step)
+            v = Trajectory._traj_v(a, b, c, d, e, time_step)
+            return s, v
+        if nargout == 3:
+            s = Trajectory._traj_s(a, b, c, d, e, f, time_step)
+            v = Trajectory._traj_v(a, b, c, d, e, time_step)
+            a = Trajectory._traj_a(a, b, c, d, time_step)
+            return s, v, a
+        try:
+            if nargout not in [1, 2, 3]:
+                raise ArgumentError("nargout should be 1 or 2 or 3")
+        except ArgumentError as e:
+            print(repr(e))
+            raise

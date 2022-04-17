@@ -1,14 +1,20 @@
 robots_count: 2
 
+# interp_mode: "max_deg", "poly_traj"
+interp_mode: "poly_traj"
+
+interp_step_freq: 0.05
+
+mean_motion_velocity_deg: 100
+
 replace_chromo:
   - True
   - 20
+  - "random"
 
 adj_chromo: True
 
 custom_initChrom: True
-
-mode: 1
 
 points_range:
   -
@@ -20,17 +26,6 @@ points_range:
   -
     - 50
     - 50
-
-# points_range:
-#   -
-#     - 100
-#     - 800
-#   -
-#     - 100
-#     - 800
-#   -
-#     - 50
-#     - 50
 
 link_width: 200
 

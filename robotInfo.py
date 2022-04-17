@@ -72,12 +72,17 @@ class Config:
     def __init__(self, config_path) -> None:
         with open(config_path, "r") as config_file:
             config = yaml.load(config_file)
+        self.interp_mode = config["interp_mode"]
+        self.interp_step_freq = config["interp_step_freq"]
+        self.mean_motion_velocity_rad = np.radians(config["mean_motion_velocity_deg"])
+
+        self.custom_initChrom = config["custom_initChrom"]
         self.adj_chromo = config["adj_chromo"]
+
         self.replace_chromo = config["replace_chromo"][0]
         self.replace_chromo_dist = config["replace_chromo"][1]
         self.replace_mode = config["replace_chromo"][2]
-        self.custom_initChrom = config["custom_initChrom"]
-        # self.mode = config["mode"]
+
         self.robots_count = config["robots_count"]
         self.points_range = config["points_range"]
         self.link_width = config["link_width"]
@@ -86,63 +91,3 @@ class Config:
         self.direct_array = np.array(config["direct_array"])
         self.baseX_offset = sum(self.points_range[0])
         self.baseY_offset = (self.points_range[1][1] - self.points_range[1][0]) / 2 + self.points_range[0][0]
-
-    #     if self.mode == 2:
-    #         self.baseY_offset = sum(self.points_range[1])
-    #         self.toe_in_angle = np.arctan2(self.baseY_offset, self.baseX_offset)
-    #         self.h01_rbs = self.get_h01_rbs()
-
-    # @staticmethod
-    # def mat_rotz(theta):
-    #     mat = np.array(
-    #         [
-    #             [np.cos(theta), -np.sin(theta), 0, 0],
-    #             [np.sin(theta), np.cos(theta), 0, 0],
-    #             [0, 0, 1, 0],
-    #             [0, 0, 0, 1],
-    #         ]
-    #     )
-    #     return mat
-
-    # @staticmethod
-    # def mat_transl(transl_list: list):
-    #     mat = np.array(
-    #         [[1, 0, 0, transl_list[0]], [0, 1, 0, transl_list[1]], [0, 0, 1, transl_list[2]], [0, 0, 0, 1]]
-    #     )
-    #     return mat
-
-    # def get_h01_rbs(self) -> Tuple[List, List, List]:
-    #     h01_rbs = []
-    #     inv_h01_rbs = []
-    #     rot_mat = []
-
-    #     rot_mat_1 = self.mat_rotz(self.toe_in_angle)
-    #     h01_1 = rot_mat_1
-    #     inv_h01_1 = np.linalg.inv(h01_1)
-    #     h01_rbs.append(h01_1)
-    #     inv_h01_rbs.append(inv_h01_1)
-    #     rot_mat.append(rot_mat_1)
-
-    #     rot_mat_2 = self.mat_rotz(self.toe_in_angle + np.pi)
-    #     h01_2 = self.mat_transl([self.baseX_offset, self.baseY_offset, 0]).dot(rot_mat_2)
-    #     inv_h01_2 = np.linalg.inv(h01_2)
-    #     h01_rbs.append(h01_2)
-    #     inv_h01_rbs.append(inv_h01_2)
-    #     rot_mat.append(rot_mat_2)
-
-    #     if self.robots_count > 2:
-    #         rot_mat_3 = self.mat_rotz(-self.toe_in_angle)
-    #         h01_3 = self.mat_transl([0, self.baseY_offset, 0]).dot(rot_mat_3)
-    #         inv_h01_3 = np.linalg.inv(h01_3)
-    #         h01_rbs.append(h01_3)
-    #         inv_h01_rbs.append(inv_h01_3)
-    #         rot_mat.append(rot_mat_3)
-
-    #         rot_mat_4 = self.mat_rotz(np.pi - self.toe_in_angle)
-    #         h01_4 = self.mat_transl([self.baseX_offset, 0, 0]).dot(rot_mat_4)
-    #         inv_h01_4 = np.linalg.inv(h01_4)
-    #         h01_rbs.append(h01_4)
-    #         inv_h01_rbs.append(inv_h01_4)
-    #         rot_mat.append(rot_mat_4)
-
-    #     return h01_rbs, inv_h01_rbs, rot_mat

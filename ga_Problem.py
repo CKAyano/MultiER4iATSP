@@ -18,6 +18,9 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         custom_initChrom = config.custom_initChrom
         points_range = config.points_range
         link_width = config.link_width
+        interp_mode = config.interp_mode
+        interp_step_freq = config.interp_step_freq
+        mean_motion_velocity_deg = np.degrees(config.mean_motion_velocity_rad)
 
         points = np.genfromtxt("output_point.csv", delimiter=",")
         points_count = points.shape[0]
@@ -44,6 +47,10 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                 file.write(f'{"points range:":<25}{points_range}\n')
                 file.write(f'{"number of points:":<25}{points_count}\n')
                 file.write(f'{"link width:":<25}{link_width}\n')
+                file.write(f'{"interp mode:":<25}{interp_mode}\n')
+                file.write(f'{"interp step freq:":<25}{interp_step_freq}\n')
+                file.write(f'{"mean motion velocity:":<25}{mean_motion_velocity_deg}\n')
+
             # file.close()
         else:
             self.is_firstImp = False
