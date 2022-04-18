@@ -10,11 +10,11 @@ from typing import List, Tuple, Optional
 
 class ChromoCalcV3:
     def __init__(
-        self, config: Config, points: np.ndarray, step: int, num_slicing: int, feasibleSol_list: List
+        self, config: Config, points: np.ndarray, step: int, gen_step_count: int, feasibleSol_list: List
     ) -> None:
         try:
-            if step >= num_slicing:
-                raise RuntimeError(f"'step'(={step}) should under {num_slicing}.")
+            if step >= gen_step_count:
+                raise RuntimeError(f"'step'(={step}) should under {gen_step_count}.")
         except RuntimeError as e:
             print(e)
             raise
@@ -25,7 +25,7 @@ class ChromoCalcV3:
         self.py = points[:, 1]
         self.pz = points[:, 2]
         self.step = step
-        self.num_slicing = num_slicing
+        self.gen_step_count = gen_step_count
         # if len(feasibleSol_list) == 0:
         self.feasibleSol_count = 0
         # else:
@@ -227,12 +227,13 @@ class ChromoCalcV3:
                 (self.robots[i].point_index, appendArray, -1)
             )  # [4, 5, -1, -1]
 
-    def _get_angle_changes(
+    # def _get_angle_changes_best_q2(
+    def _get_best_q_2(
         self, p_id_rbs: List[int], q_1_best_rbs: List[np.ndarray]
     ) -> Optional[Tuple[List[np.ndarray], List[np.ndarray]]]:
 
         q_2_best_rbs = []
-        angle_changes_rbs = []
+        # angle_changes_rbs = []
         for rb in range(self.config.robots_count):
             if p_id_rbs[rb] == -1:
                 q_2_best_rbs.append(self.config.org_pos)
@@ -242,9 +243,10 @@ class ChromoCalcV3:
                 is_q_nan = np.isnan(q_2_best_rbs[rb])
                 if np.any(is_q_nan):
                     return None
-            angle_changes_rbs.append(np.degrees(np.abs(q_2_best_rbs[rb] - q_1_best_rbs[rb])))
+            # angle_changes_rbs.append(np.degrees(np.abs(q_2_best_rbs[rb] - q_1_best_rbs[rb])))
 
-        return angle_changes_rbs, q_2_best_rbs
+        # return angle_changes_rbs, q_2_best_rbs
+        return q_2_best_rbs
 
     def _get_interp_max_deg_between_points(
         self, max_deg: int, q_1_best: np.ndarray, q_2_best: np.ndarray
@@ -262,45 +264,52 @@ class ChromoCalcV3:
         return int_q
 
     def _get_interp_poly_traj_between_points(self, q_1_best: np.ndarray, q_2_best: np.ndarray):
-        _, int_q = Trajectory.get_trajectory(
+        time_step, int_q = Trajectory.get_trajectory(
             q_1_best, q_2_best, self.config.mean_motion_velocity_rad, self.config.interp_step_freq
         )
         # int_q_out = int_q[1:, :]
-        return int_q[1:, :]
+        time_spend = time_step[-1, 0] - time_step[0, 0]
+        return time_spend, int_q[1:, :]
 
     def _get_interp_for_all_robots(
         self, q_1_best_rbs: List[np.ndarray], p_id_rbs: List[int]
     ) -> Optional[Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]]:
 
-        _angle_changes = self._get_angle_changes(p_id_rbs, q_1_best_rbs)
-        if _angle_changes is None:
+        q_2_best_rbs = self._get_best_q_2(p_id_rbs, q_1_best_rbs)
+        if q_2_best_rbs is None:
             return None
-        angle_changes_rbs, q_2_best_rbs = _angle_changes
+        # angle_changes_rbs, q_2_best_rbs = _angle_changes
 
         interp_q_rbs = []
+        obj_values_rbs = []
         for rb in range(self.config.robots_count):
             if self.config.interp_mode == "max_deg":
-                max_deg = int(np.max(angle_changes_rbs[rb]))
+                # max_deg = int(np.max(angle_changes_rbs[rb]))
+                angle_changes = np.degrees(np.abs(q_2_best_rbs[rb] - q_1_best_rbs[rb]))
+                max_deg = int(np.max(angle_changes))
                 interp_q_rbs.append(
                     self._get_interp_max_deg_between_points(max_deg, q_1_best_rbs[rb], q_2_best_rbs[rb])
                 )
+                obj_values_rbs.append(np.max(angle_changes))
             if self.config.interp_mode == "poly_traj":
-                interp_q_rbs.append(
-                    self._get_interp_poly_traj_between_points(q_1_best_rbs[rb], q_2_best_rbs[rb])
+                time_spend, interp_q = self._get_interp_poly_traj_between_points(
+                    q_1_best_rbs[rb], q_2_best_rbs[rb]
                 )
+                interp_q_rbs.append(interp_q)
+                obj_values_rbs.append(time_spend)
 
-        return interp_q_rbs, q_2_best_rbs, angle_changes_rbs
+        return interp_q_rbs, q_2_best_rbs, obj_values_rbs
 
     def interpolation(self, chromosome: np.ndarray) -> Optional[Tuple[List[np.ndarray], np.ndarray]]:
         self.set_robotsPath(chromosome)
 
         is_firstLoop = True
-        totalAngle_rbs = 0
+        total_obj_values_rbs = 0
         joints_count = self.config.org_pos.size
 
         len_pointIndex = len(self.robots[0].point_index)
         totalInt_q_rbs = [np.zeros((0, joints_count))] * self.config.robots_count
-        totalAngle_rbs = 0
+        total_obj_values_rbs = 0
         for i in range(len_pointIndex):
             if is_firstLoop:
                 q_1_best = [self.config.org_pos] * self.config.robots_count
@@ -312,12 +321,12 @@ class ChromoCalcV3:
             _interp_rbs = self._get_interp_for_all_robots(q_1_best, p_id_rbs)
             if _interp_rbs is None:
                 return None
-            int_q, q_2_best, angle_changes_rbs = _interp_rbs
+            int_q, q_2_best, obj_values_rbs = _interp_rbs
             for rb in range(self.config.robots_count):
                 totalInt_q_rbs[rb] = np.vstack((totalInt_q_rbs[rb], int_q[rb]))
                 # max_angleOffset[rb] =
                 # totalAngle[rb] = np.vstack((totalAngle[rb], angOffset[rb]))
-            totalAngle_rbs = totalAngle_rbs + np.max(np.array(angle_changes_rbs), axis=1)
+            total_obj_values_rbs = total_obj_values_rbs + np.array(obj_values_rbs)
 
         int_count = [np.shape(totalInt_q_rbs[rb])[0] for rb in range(self.config.robots_count)]
         max_int_count = max(int_count)
@@ -327,7 +336,7 @@ class ChromoCalcV3:
             org_need_append = np.repeat(org, need_append_count, axis=0)
             totalInt_q_rbs[rb] = np.vstack((totalInt_q_rbs[rb], org_need_append))
 
-        return totalInt_q_rbs, totalAngle_rbs
+        return totalInt_q_rbs, total_obj_values_rbs
 
     def __SUSPENDED__get_interp_slicing(
         self, totalInt_q_rbs: List[np.ndarray], level: int, preInd
@@ -363,7 +372,7 @@ class ChromoCalcV3:
 
         if _interpolation is None:
             return None
-        if self.step + 1 == self.num_slicing:
+        if self.step + 1 == self.gen_step_count:
             return _interpolation
 
         totalInt_q_rbs, totalAngle_rbs = _interpolation
@@ -475,14 +484,14 @@ class ChromoCalcV3:
 
     def score_step(self, chromosome, logging) -> Tuple[float, float]:
         if self.config.robots_count == 1:
-            score_dist, totalDistance = self.score_single_robot(chromosome, logging)
-            return score_dist, totalDistance
+            obj_1, totalDistance = self.score_single_robot(chromosome, logging)
+            return obj_1, totalDistance
 
         _interpolation = self.interpolation_step(chromosome)
         if _interpolation is not None:
-            totalInt_q, totalAngle, std_rbs_angleOffset = (
+            totalInt_q, obj_1, obj_2 = (
                 _interpolation[0],
-                np.sum(_interpolation[1]),
+                np.max(_interpolation[1]),
                 np.std(_interpolation[1]),
             )
 
@@ -504,17 +513,17 @@ class ChromoCalcV3:
                     logging.save_status(msg)
                     self.feasibleSol_count += 1
         else:
-            totalAngle = 0
+            obj_1 = 0
             collisionScore = 90000000
-            std_rbs_angleOffset = 10000
+            obj_2 = 10000
             msg = "Out of Range! _ None"
             print(msg)
             logging.save_status(msg)
         # self.feasibleSol_list.append(self.feasibleSol_count)
-        score_dist = totalAngle + collisionScore
-        score_dist = score_dist // 5 * 5
-        std_rbs_angleOffset = std_rbs_angleOffset // 5 * 5
-        return score_dist, std_rbs_angleOffset
+        obj_1 = obj_1 + collisionScore
+        # obj_1 = obj_1 // 5 * 5
+        # obj_2 = obj_2 // 5 * 5
+        return obj_1, obj_2
 
     def get_point_distance(self, totalInt_q_rbs):
         dist_rbs = []

@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 class MyProblem(ea.Problem):  # 继承Problem父类
-    def __init__(self, step, num_slicing, config_path, feasibleSol_list, M=2):
+    def __init__(self, step, gen_step_count, config_path, feasibleSol_list, M=2):
         config = Config(config_path)
 
         robots_count = config.robots_count
@@ -55,7 +55,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         else:
             self.is_firstImp = False
         self.logging = Collision_status(self.step)
-        self.ccv3 = ChromoCalcV3(config, points, step, num_slicing, feasibleSol_list)
+        self.ccv3 = ChromoCalcV3(config, points, step, gen_step_count, feasibleSol_list)
         ea.Problem.__init__(self, name, M, maxormins, Dim, varTypes, lb, ub, lbin, ubin)
 
     def aimFunc(self, pop):  # 目标函数
