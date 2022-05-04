@@ -646,14 +646,22 @@ class Trajectory:
     def plot_trajectory(*trajs):
         plot_count = len(trajs)
         fig, axs = plt.subplots(plot_count, 1)
+        fig.subplots_adjust(left=0.2, wspace=0.6)
+
         for i, p in enumerate(trajs):
             axs[i].plot(p[:, 0], p[:, 1])
             if i == 0:
-                axs[i].set_title("s")
+                axs[i].set_xlabel("time")
+                axs[i].set_ylabel("position (rad)")
             if i == 1:
-                axs[i].set_title("v")
+                axs[i].set_xlabel("time")
+                axs[i].set_ylabel("velocity (rad/s)")
             if i == 2:
-                axs[i].set_title("a")
+                axs[i].set_xlabel("time")
+                axs[i].set_ylabel("acceleration (rad/$s^2$)")
+        fig.tight_layout()
+        fig.align_ylabels(axs)
+        plt.savefig("./fig.png", dpi=400)
         plt.show()
 
     def get_trajectory(
