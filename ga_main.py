@@ -101,11 +101,11 @@ def main() -> None:
     del_log_contents()
 
     Path(f"./Result/Chrom_per1000").mkdir(parents=True, exist_ok=True)
-    num_slicing = len(GEN_LIST)
+    gen_step_count = len(GEN_LIST)
     passTime_sec = 0
     feasibleSol_list = []
-    for step in range(num_slicing):
-        problem = MyProblem(step, num_slicing, CONFIG_PATH, feasibleSol_list)
+    for step in range(gen_step_count):
+        problem = MyProblem(step, gen_step_count, CONFIG_PATH, feasibleSol_list)
         Encoding = "P"
         Field = ea.crtfld(Encoding, problem.varTypes, problem.ranges, problem.borders)
         population = ea.Population(Encoding, Field, NIND)
@@ -121,7 +121,7 @@ def main() -> None:
         shutil.copytree("./Result", f"./log/Step_{step}")
         passTime_sec += myAlgorithm.passTime
         feasibleSol_list = problem.ccv3.feasibleSol_list
-        if step != num_slicing - 1:
+        if step != gen_step_count - 1:
             del_result_contents()
 
     filepath_rbcount = f"Robot_{problem.ccv3.config.robots_count}"
