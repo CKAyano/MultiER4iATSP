@@ -131,6 +131,8 @@ def main() -> None:
     else:
         filepath_step = f"step{len(GEN_LIST)}"
 
+    filepath_points_count = f"points_count{problem.ccv3.px.shape[0]}"
+
     filepath_mode = "no_replace"
     result_paht_2 = ""
 
@@ -138,7 +140,10 @@ def main() -> None:
         filepath_mode = problem.ccv3.config.replace_mode
         result_paht_2 = f"/Hamming{problem.ccv3.config.replace_chromo_dist}"
 
-    result_path_1 = f"./[Result]/{filepath_rbcount}/{filepath_step}/Gen{GEN_LIST[-1]}/{filepath_mode}"
+    result_path_1 = (
+        f"./[Result]/{filepath_rbcount}/{filepath_points_count}"
+        + f"/{filepath_step}/Gen{GEN_LIST[-1]}/{filepath_mode}"
+    )
 
     result_path = f"{result_path_1}{result_paht_2}/{problem.ccv3.config.interp_mode}"
     Path(result_path).mkdir(parents=True, exist_ok=True)
