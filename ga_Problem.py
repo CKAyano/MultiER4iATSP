@@ -19,7 +19,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         points_range = config.points_range
         link_width = config.link_width
         interp_mode = config.interp_mode
-        interp_step_freq = config.interp_step_freq
+        interp_step_freq = config.interp_step_period
         mean_motion_velocity_deg = np.degrees(config.mean_motion_velocity_rad)
 
         points = np.genfromtxt("output_point.csv", delimiter=",")
