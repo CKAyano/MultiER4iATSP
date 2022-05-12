@@ -265,7 +265,7 @@ class ChromoCalcV3:
 
     def _get_interp_poly_traj_between_points(self, q_1_best: np.ndarray, q_2_best: np.ndarray):
         time_step, int_q = Trajectory.get_trajectory(
-            q_1_best, q_2_best, self.config.mean_motion_velocity_rad, self.config.interp_step_freq
+            q_1_best, q_2_best, self.config.mean_motion_velocity_rad, self.config.interp_step_period
         )
         # int_q_out = int_q[1:, :]
         time_spend = time_step[-1, 0] - time_step[0, 0]
@@ -674,7 +674,7 @@ class Trajectory:
         plt.show()
 
     def get_trajectory(
-        angle_start: np.ndarray, angle_stop: np.ndarray, mean_ang_v, step_freq=1 / 20, is_test=False
+        angle_start: np.ndarray, angle_stop: np.ndarray, mean_ang_v, step_period=1 / 20, is_test=False
     ) -> Tuple[np.ndarray]:
         if angle_start.ndim == 2:
             angle_start = np.squeeze(angle_start)
@@ -685,7 +685,7 @@ class Trajectory:
         t_end = np.max(np.abs(angle_stop - angle_start)) / mean_ang_v
         joints_count = len(angle_start)
 
-        step_count = int((t_end - t_start) / step_freq)
+        step_count = int((t_end - t_start) / step_period)
         if step_count <= 2:
             return np.array([[t_start], [t_end]]), np.vstack((angle_start, angle_stop))
 
