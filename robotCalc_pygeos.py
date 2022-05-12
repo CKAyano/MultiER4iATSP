@@ -131,7 +131,7 @@ class RobotCalc_pygeos:
         diff_q5 = np.absolute(q_array[:, 4] - q_f_best[4])
         diff_q6 = np.absolute(q_array[:, 5] - q_f_best[5])
         jointDiff = np.vstack((diff_q1, diff_q2, diff_q3, diff_q4, diff_q5, diff_q6))
-        jointMax_index = np.argmax(jointDiff, axis=0)
+        jointMax_index = np.argmax(jointDiff, axis=0)  # 每個逆向解最大軸是第幾軸
         numOfPoint = q_array.shape[0]
         for ii in range(numOfPoint):
             if ii == 0:
@@ -356,6 +356,10 @@ class RobotCalc_pygeos:
                 vecCross_2 = np.cross(vector_3, vector_2)
                 length_vec_2 = np.linalg.norm(vecCross_2)
                 normed_normalVec_2 = vecCross_2 / length_vec_2
+                if length_vec_1 == 0:
+                    normed_normalVec_1 = np.array([0, 1, 0])
+                if length_vec_2 == 0:
+                    normed_normalVec_2 = np.array([0, 1, 0])
             return v1_point, v2_point, normed_normalVec_1, normed_normalVec_2
 
         v_all = self.userFK(q)
