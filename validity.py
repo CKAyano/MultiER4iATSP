@@ -17,6 +17,10 @@ import natsort
 import matplotlib.pyplot as plt
 import pandas as pd
 import datetime
+import tkinter as tk
+from PIL import Image, ImageTk
+from tkinter import ttk, filedialog
+import tkfilebrowser as tkf
 
 
 class DrawRobots:
@@ -29,7 +33,7 @@ class DrawRobots:
         self.folderName = folderName
         self.config.link_width = self.config.link_width / 2
         self.rc = RobotCalc_pygeos(self.config)
-        self.robots_color = ["k", "r", "g", "b"]
+        self.robots_color = ["k", "royalblue", "r", "g"]
         # self.ccv3 = ChromoCalcV3(self.config, self.points, 0, 1)
 
     def cph(self, point):
@@ -65,6 +69,25 @@ class DrawRobots:
         cph2 = gm.geometry.ConvexPolyhedron((cpg7, cpg8, cpg9, cpg10, cpg11, cpg12))
         return cph1, cph2
 
+    def _cph_vs_seg_robots(self, q_best, int_point):
+        ccv3 = ChromoCalcV3(self.config, self.points, 0, 1, [])
+        cphs = []
+        # for rb in range(self.config.robots_count):
+        points = self.rc.get_link_points(q_best[0][int_point, :], ccv3.robots[0])
+        cph1, cph2 = self.cph(points)
+
+        vb_all = self.rc.userFK(q_best[1][int_point, :])
+        vb_all = self.rc.robot2world_v_all(vb_all, ccv3.robots[1].position)
+
+        gm_vb1 = gm.geometry.Point(vb_all.v2.xx, vb_all.v2.yy, vb_all.v2.zz)
+        gm_vb3 = gm.geometry.Point(vb_all.v4.xx, vb_all.v4.yy, vb_all.v4.zz)
+        gm_vb4 = gm.geometry.Point(vb_all.v5.xx, vb_all.v5.yy, vb_all.v5.zz)
+
+        gmSegB1 = gm.geometry.Segment(gm_vb1, gm_vb3)
+        gmSegB2 = gm.geometry.Segment(gm_vb3, gm_vb4)
+        # cphs.append(_cph)
+        return cph1, cph2, gmSegB1, gmSegB2
+
     def cph_robots(self, q_best: List[np.ndarray], intPoint) -> bool:
         ccv3 = ChromoCalcV3(self.config, self.points, 0, 1, [])
         cphs = []
@@ -74,7 +97,49 @@ class DrawRobots:
             cphs.append(_cph)
         return cphs
 
-    def draw(self, q_best: List[np.ndarray], intPoint, save_path: str):
+    def _draw_cph_vs_seg(self, q_best: List[np.ndarray], intPoint, save_path: str, axis=None):
+        cphs = self._cph_vs_seg_robots(q_best, intPoint)
+
+        inter1 = gm.calc.intersection(cphs[0], cphs[2])
+        inter2 = gm.calc.intersection(cphs[0], cphs[3])
+        inter3 = gm.calc.intersection(cphs[1], cphs[2])
+        inter4 = gm.calc.intersection(cphs[1], cphs[3])
+
+        strInter1 = str(inter1)
+        strInter2 = str(inter2)
+        strInter3 = str(inter3)
+        strInter4 = str(inter4)
+
+        r = gm.render.Renderer()
+
+        # for rb in range(self.config.robots_count):
+        r.add((cphs[0], self.robots_color[0], 2), normal_length=0)
+        r.add((cphs[1], self.robots_color[0], 2), normal_length=0)
+
+        r.add((cphs[2], self.robots_color[1], 2), normal_length=0)
+        r.add((cphs[3], self.robots_color[1], 2), normal_length=0)
+
+        color_inter = "darkorange"
+        if strInter1 == "None":
+            pass
+        else:
+            r.add((inter1, color_inter, 8), normal_length=0)
+        if strInter2 == "None":
+            pass
+        else:
+            r.add((inter2, color_inter, 8), normal_length=0)
+        if strInter3 == "None":
+            pass
+        else:
+            r.add((inter3, color_inter, 8), normal_length=0)
+        if strInter4 == "None":
+            pass
+        else:
+            r.add((inter4, color_inter, 5), normal_length=0)
+        # r.show(axis=axis, dpi=200)
+        r.savefigure(save_path, axis)
+
+    def draw(self, q_best: List[np.ndarray], intPoint, save_path: str, axis=None):
         cphs = self.cph_robots(q_best, intPoint)
         r = gm.render.Renderer()
 
@@ -82,9 +147,9 @@ class DrawRobots:
             r.add((cphs[rb][0], self.robots_color[rb], 1), normal_length=0)
             r.add((cphs[rb][1], self.robots_color[rb], 1), normal_length=0)
         # r.show()
-        r.savefigure(save_path)
+        r.savefigure(save_path, axis)
 
-    def chrom_to_png(self, is_log: Optional[bool] = None):
+    def chrom_to_png(self, is_log: Optional[bool] = None, axis=None):
         ccv3 = ChromoCalcV3(self.config, self.points, 0, 1, [])
         chrom = np.genfromtxt(f"{self.folderName}/Chrom.csv", delimiter=",", dtype="int32")
         for chromoInd in range(chrom.shape[0]):
@@ -106,7 +171,7 @@ class DrawRobots:
                     + f"ChromID_{chromoInd}/figure/figure_{intPoint}"
                 )
                 try:
-                    self.draw(totalInt_q, intPoint, path)
+                    self.draw(totalInt_q, intPoint, path, axis)
                 except Exception as e:
                     print(f"can't draw, because {e}")
                     # raise
@@ -141,7 +206,7 @@ class DrawRobots:
             for rb in range(self.config.robots_count):
                 path_index = ccv3.robots[rb].robot_path - 1
                 plt.plot(
-                    px[path_index], py[path_index], f"{self.robots_color[rb]}o",
+                    px[path_index], py[path_index], marker="o", markerfacecolor=f"{self.robots_color[rb]}"
                 )
 
                 if is_connect:
@@ -258,18 +323,27 @@ class IndexComparision:
                 d.append(np.abs(np.diff(_sorted_objV[:, obj_num])))
             return d
 
+        def _sigma(s, d):
+            return np.sum(np.square(d - np.mean(d))) / (s - 2)
+
+        def _mu(s, d):
+            return np.sum(d) / (s - 1)
+
         objV = IndexComparision._sort_obj_value(objV)
         d = _distance(objV)
         f_pb = range_obj[0]
         f_pg = range_obj[1]
         dm_h = []
+        s = objV.shape[0]
         for obj_num in range(objV.shape[1]):
-            upper = np.std(d[obj_num]) / np.mean(d[obj_num])
+            # test = _sigma(s, d[obj_num])
+            # upper = np.std(d[obj_num]) / np.mean(d[obj_num])
+            upper = _sigma(s, d[obj_num]) / _mu(s, d[obj_num])
             bottom = np.abs(np.max(objV[:, obj_num]) - np.min(objV[:, obj_num])) / np.abs(
                 f_pb[obj_num] - f_pg[obj_num]
             )
             dm_h.append(upper / bottom)
-        dm = sum(dm_h) / objV.shape[0]
+        dm = sum(dm_h) / s
         return dm
 
     def _sort_obj_value(objV):
@@ -411,6 +485,78 @@ class IndexComparision:
         writer.save()
 
 
+class ResultAnalyzeApp:
+    def __init__(self) -> None:
+
+        self.root = tk.Tk()
+        self.root.title("HighSchool AI Project")
+        self.root.protocol("WM_DELETE_WINDOW", self.destructor)
+        self.folders_name = ["111aa", "222", "333", "444"]
+        self.root.geometry("1280x720")
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+
+        # test = self.get_files_path()
+
+        # --------show folder list--------
+        df_col = ["path"]
+        self.tree = ttk.Treeview(self.root, show="headings", columns=df_col)
+        # counter = len(self.folders_name)
+        # rowLabels = self.folders_name.index
+        for j in range(len(df_col)):
+            self.tree.column(df_col[j], width=1150)
+            self.tree.heading(df_col[j], text=df_col[j])
+        for i, d in enumerate(self.folders_name):
+            self.tree.insert("", len(self.folders_name) - 1 + i, values=[d])
+        self.tree.pack(side=tk.BOTTOM, padx=20)
+
+        # # --------path button--------
+
+        frame_sel_path = tk.Frame(self.root)
+        self.button_sel_path = tk.Button(
+            frame_sel_path, text="select paths", width=15, command=self.select_files_path
+        )
+        self.button_sel_path.pack(side=tk.RIGHT, pady=50)
+        self.button_del_path = tk.Button(frame_sel_path, text="delete paths", width=15, command=self.delete)
+        self.button_del_path.pack(side=tk.RIGHT, pady=50)
+        frame_sel_path.pack()
+
+        frame_operations = tk.Frame(self.root)
+        self.button_SP = tk.Button(frame_operations, text="SP", width=15, command=self.select_files_path)
+        self.button_OS = tk.Button(frame_operations, text="OS", width=15, command=self.select_files_path)
+        self.button_DM = tk.Button(frame_operations, text="DM", width=15, command=self.select_files_path)
+
+        self.video_loop()
+        # self.root.mainloop()
+
+    def video_loop(self) -> None:
+        # self.paths.config(text=f"{self.folders_name}")
+
+        self.root.after(30, self.video_loop)  # call the same function after 30 milliseconds
+
+    def select_files_path(self):
+        dirs = tkf.askopendirnames()
+        for i, d in enumerate(dirs):
+            self.tree.insert("", len(self.folders_name) - 1 + i, values=[d])
+        dirs = list(dirs)
+        self.folders_name.extend(dirs)
+
+    def delete(self) -> None:
+        selected_item = self.tree.selection()
+        for i in range(len(selected_item)):
+            selected_values = self.tree.item(selected_item[i])["values"]
+            selected_values = selected_values[0]
+            self.folders_name.remove(str(selected_values))
+            self.tree.delete(selected_item[i])
+
+    def sp(self):
+        IndexComparision.main_distribution_metric()
+
+    def destructor(self) -> None:
+        print("[INFO] closing...")
+        self.root.destroy()
+
+
 class Single_Robot:
     def save_pareto() -> None:
         objv_path_1 = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909"
@@ -489,8 +635,21 @@ class Single_Robot:
 
 
 if __name__ == "__main__":
-    # dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932")
-    # dr.chrom_to_png()
+    dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226")
+    dr.draw_manuf_route()
+    # dr.config.baseX_offset -= 200
+    # q_best_1 = np.radians(np.array([[0, 60, -20, 0, -90, 0]]))
+    # q_best_2 = np.radians(np.array([[0, 60, -20, 0, -90, 0]]))
+    # q_best_1 = np.radians(np.array([[0, 0, 0, 0, -90, 0]]))
+    # q_best_2 = np.radians(np.array([[0, 0, 0, 0, -90, 0]]))
+    # q_best_1 = np.radians(np.array([[-20, 60, -20, 0, -90, 0]]))
+    # q_best_2 = np.radians(np.array([[-20, 60, -20, 0, -90, 0]]))
+
+    # dr._draw_cph_vs_seg([q_best_1, q_best_2], 0, "1", axis=[[0, 700], [-350, 350], [-350, 350]])
+    # try:
+    #     dr.chrom_to_png(axis=[[0, 900], [-450, 450], [-450, 450]])
+    # except Exception:
+    #     pass
 
     # config = Config("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/CONFIG.yml")
     # points = np.genfromtxt(
@@ -505,11 +664,10 @@ if __name__ == "__main__":
     # test = ccv3.interpolation_step(chrom[3, :])
     # print()
 
-    folder_self_path = "./[Result]/Robot_2/noStep/Gen10000/no_replace"
-    folder_other_path = "./[Result]/Robot_2/noStep/Gen10000/random/Hamming40"
-    res_c = IndexComparision.main_cIndex(folder_self_path, folder_other_path)
-    res_dm = IndexComparision.main_distribution_metric(DMType.DM, folder_self_path, folder_other_path)
-    print(res_c[1])
-    print(res_dm[1])
-    print(res_dm[2])
-    # Single_Robot.ik_list()
+    # folder_self_path = "./[Result]/Robot_2/noStep/Gen10000/no_replace/poly_traj"
+    # folder_other_path = "./[Result]/Robot_2/noStep/Gen10000/random/Hamming30/poly_traj"
+    # res_c = IndexComparision.main_cIndex(folder_self_path, folder_other_path)
+    # res_dm = IndexComparision.main_distribution_metric(DMType.DM, folder_self_path, folder_other_path)
+    # print(res_c[1])
+    # print(res_dm[1])
+    # print(res_dm[2])
