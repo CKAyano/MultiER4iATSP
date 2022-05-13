@@ -73,7 +73,10 @@ class Config:
         with open(config_path, "r") as config_file:
             config = yaml.load(config_file)
         self.interp_mode = config["interp_mode"]
-        self.interp_step_period = config["interp_step_period"]
+        try:
+            self.interp_step_period = config["interp_step_period"]
+        except Exception:
+            self.interp_step_period = config["interp_step_freq"]
         self.mean_motion_velocity_rad = np.radians(config["mean_motion_velocity_deg"])
 
         self.custom_initChrom = config["custom_initChrom"]
