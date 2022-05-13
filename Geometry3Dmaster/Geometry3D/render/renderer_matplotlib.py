@@ -5,6 +5,7 @@ from ..geometry.polygon import ConvexPolygon
 from ..geometry.polyhedron import ConvexPolyhedron
 from .arrow import Arrow
 from ..utils.logger import get_main_logger
+import numpy as np
 
 
 class MatplotlibRenderer:
@@ -21,7 +22,7 @@ class MatplotlibRenderer:
         self.segment_set = set()
         self.arrow_set = set()
 
-    def show(self):
+    def show(self, axis=None, dpi=None):
         """
         Draw the image
         """
@@ -55,9 +56,16 @@ class MatplotlibRenderer:
             size = arrow_tuple[1]
             ax.quiver(x, y, z, u, v, w, color=color, length=length)
 
+        if axis:
+            ax.set_xlim3d((axis[0][0], axis[0][1]))
+            ax.set_ylim3d((axis[1][0], axis[1][1]))
+            ax.set_zlim3d((axis[2][0], axis[2][1]))
+
+        if dpi:
+            plt.gcf().set_dpi(dpi)
         plt.show()
 
-    def savefigure(self, path):
+    def savefigure(self, path, axis=None):
         """
         Draw the image
         """
@@ -91,11 +99,34 @@ class MatplotlibRenderer:
             size = arrow_tuple[1]
             ax.quiver(x, y, z, u, v, w, color=color, length=length)
 
-        plt.xlim((100, 550))
-        plt.ylim((-350, 350))
+        if axis:
+            ax.set_xlim3d((axis[0][0], axis[0][1]))
+            ax.set_ylim3d((axis[1][0], axis[1][1]))
+            ax.set_zlim3d((axis[2][0], axis[2][1]))
+        else:
+            plt.xlim((100, 550))
+            plt.ylim((-350, 350))
         plt.savefig(path)
         fig.clf()
         plt.close()
+
+    def set_axes_equal(ax):
+        x_limits = ax.get_xlim3d()
+        y_limits = ax.get_ylim3d()
+        z_limits = ax.get_zlim3d()
+
+        x_range = abs(x_limits[1] - x_limits[0])
+        x_middle = np.mean(x_limits)
+        y_range = abs(y_limits[1] - y_limits[0])
+        y_middle = np.mean(y_limits)
+        z_range = abs(z_limits[1] - z_limits[0])
+        z_middle = np.mean(z_limits)
+
+        plot_radius = 0.5 * max([x_range, y_range, z_range])
+
+        ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
+        ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
+        ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
 
     def add(self, obj, normal_length=0):
         """
