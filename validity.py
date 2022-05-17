@@ -35,6 +35,7 @@ class DrawRobots:
         self.rc = RobotCalc_pygeos(self.config)
         self.robots_color = ["k", "royalblue", "r", "g"]
         # self.ccv3 = ChromoCalcV3(self.config, self.points, 0, 1)
+        self.datetime_now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
 
     def cph(self, point):
         point1 = gm.geometry.Point(point[0][0], point[0][1], point[0][2])
@@ -196,34 +197,64 @@ class DrawRobots:
     def draw_manuf_route(self, is_connect: Optional[bool] = None):
         ccv3 = ChromoCalcV3(self.config, self.points, 0, 1, [])
         chroms = np.genfromtxt(f"{self.folderName}/Chrom.csv", delimiter=",", dtype="int32")
-        chrom_count = len(os.listdir(f"./ValidityFigure/{self.folderName[11:]}"))
+        chroms = np.unique(chroms, axis=0)
+        chrom_count = chroms.shape[0]
 
         px = self.points[:, 0]
         py = self.points[:, 1]
+
         for c in range(chrom_count):
+            path_save = f"./ValidityFigure/{self.datetime_now}/manuf_path"
+            Path(path_save).mkdir(parents=True, exist_ok=True)
             chrom = chroms[c, :]
             ccv3.set_robotsPath(chrom)
             for rb in range(self.config.robots_count):
                 path_index = ccv3.robots[rb].robot_path - 1
                 plt.plot(
-                    px[path_index], py[path_index], marker="o", markerfacecolor=f"{self.robots_color[rb]}"
+                    px[path_index],
+                    py[path_index],
+                    marker="o",
+                    markerfacecolor=f"{self.robots_color[rb]}",
+                    markersize="10",
+                    linestyle="",
                 )
 
                 if is_connect:
-                    path_index_shift = np.hstack((path_index[1:], path_index[0]))
-                    for i, next_i in zip(path_index, path_index_shift):
-                        plt.arrow(
-                            px[i],
-                            py[i],
-                            px[next_i] - px[i],
-                            py[next_i] - py[i],
-                            head_width=3,
-                            length_includes_head=True,
-                            color="red",
-                        )
+                    try:
+                        path_index_shift = path_index[1:]
+                        for i, next_i in zip(path_index, path_index_shift):
+                            plt.arrow(
+                                px[i],
+                                py[i],
+                                px[next_i] - px[i],
+                                py[next_i] - py[i],
+                                head_width=15,
+                                length_includes_head=True,
+                                color="red",
+                            )
+                    except Exception:
+                        pass
 
-            plt.savefig(f"./ValidityFigure/{self.folderName[11:]}/ChromID_{c}/manuf_route.png")
-            plt.show()
+            plt.savefig(f"{path_save}/ChromID_{c}")
+            plt.cla()
+            plt.clf()
+            plt.close()
+            # plt.show()
+
+    def draw_pareto(self):
+        path_save = f"./ValidityFigure/{self.datetime_now}"
+        Path(path_save).mkdir(parents=True, exist_ok=True)
+        objV = np.genfromtxt(f"{self.folderName}/ObjV.csv", delimiter=",")
+        objV = IndexComparision._sort_obj_value(objV)
+        plt.plot(objV[:, 0], objV[:, 1], "ro")
+        plt.title("Pareto Front")
+        plt.xlabel(r"$\sigma$")
+        plt.ylabel("T")
+        plt.savefig(f"{path_save}/pareto.png")
+        plt.cla()
+        plt.clf()
+        plt.close()
+        # plt.show()
 
 
 def c_measurement(obj_a_all: np.ndarray, obj_b_all: np.ndarray) -> float:
@@ -374,7 +405,7 @@ class IndexComparision:
                 folder_list.remove(folder)
         return folder_list
 
-    def main_distribution_metric(method: DMType, *folders_paths):
+    def main_distribution_metric(method: DMType, *folders_paths, un):
         # noRep_path = "./[Result]/noRep_10000Gen_noSlice"
         # repRandom_path = "./[Result]/rep_10000Gen_noSlice"
         # repReverse_path = "./[Result]/mode_reverse"
@@ -389,10 +420,10 @@ class IndexComparision:
             metric_method = IndexComparision._spacing_metric
         elif method == DMType.OS:
             metric_method = IndexComparision._overall_pareto_spread
-            utopia_nadir = IndexComparision._find_utopia_nadir(*folders_paths)
+            # utopia_nadir = IndexComparision._find_utopia_nadir(*folders_paths)
         elif method == DMType.DM:
             metric_method = IndexComparision._distribution_metric
-            utopia_nadir = IndexComparision._find_utopia_nadir(*folders_paths)
+            # utopia_nadir = IndexComparision._find_utopia_nadir(*folders_paths)
 
         folders = folders_lists
         folders_path = [ph for ph in folders_paths]
@@ -406,7 +437,7 @@ class IndexComparision:
                 if method == DMType.SP:
                     metric.append(metric_method(objV))
                 else:
-                    metric.append(metric_method(objV, utopia_nadir))
+                    metric.append(metric_method(objV, un))
             metric_all_folder.append(metric)
             metric_mean.append(np.mean(metric))
             metric_std.append(np.std(metric))
@@ -635,8 +666,16 @@ class Single_Robot:
 
 
 if __name__ == "__main__":
-    dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226")
-    dr.draw_manuf_route()
+    # dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226")
+    # dr = DrawRobots(
+    #     "./[Result]/Robot_2/points_count25/noStep/Gen10000/random/Hamming5/poly_traj/220513-211237"
+    # )
+    # dr = DrawRobots(
+    #     "./[Result]/Robot_2/points_count50/noStep/Gen10000/random/Hamming10/poly_traj/220513-110428"
+    # )
+    dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming20/poly_traj/220421-180516")
+    dr.draw_manuf_route(is_connect=True)
+    dr.draw_pareto()
     # dr.config.baseX_offset -= 200
     # q_best_1 = np.radians(np.array([[0, 60, -20, 0, -90, 0]]))
     # q_best_2 = np.radians(np.array([[0, 60, -20, 0, -90, 0]]))
@@ -664,10 +703,18 @@ if __name__ == "__main__":
     # test = ccv3.interpolation_step(chrom[3, :])
     # print()
 
+    # f_1 = "./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj"
+    # f_2 = "./[Result]/Robot_2/noStep/Gen10000/random/Hamming20/poly_traj"
+    # f_3 = "./[Result]/Robot_2/noStep/Gen10000/random/Hamming30/poly_traj/dm_test"
+    # f_4 = "./[Result]/Robot_2/noStep/Gen10000/random/Hamming40/poly_traj"
+    # un = IndexComparision._find_utopia_nadir(f_1, f_2, f_3, f_4)
+
     # folder_self_path = "./[Result]/Robot_2/noStep/Gen10000/no_replace/poly_traj"
-    # folder_other_path = "./[Result]/Robot_2/noStep/Gen10000/random/Hamming30/poly_traj"
+    # folder_other_path = "./[Result]/Robot_2/noStep/Gen10000/random/Hamming40/poly_traj"
     # res_c = IndexComparision.main_cIndex(folder_self_path, folder_other_path)
-    # res_dm = IndexComparision.main_distribution_metric(DMType.DM, folder_self_path, folder_other_path)
+    # res_dm = IndexComparision.main_distribution_metric(
+    #     DMType.DM, folder_self_path, folder_other_path, un=un
+    #     )
     # print(res_c[1])
     # print(res_dm[1])
     # print(res_dm[2])
