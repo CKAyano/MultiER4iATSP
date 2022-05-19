@@ -5,7 +5,39 @@ from robotCalc_pygeos import RobotCalc_pygeos, Coord
 from robotInfo import Config, Robot, Position
 from typing import List, Tuple, Optional
 
-# from caching import np_cache
+
+class LeftoverPopulation:
+    leftover_population = None
+
+
+class CrowdingMode:
+    def mode_random(elimed_pop, insert_count):
+        pop_rand = elimed_pop.copy()
+        pop_rand.initChrom(insert_count)
+        # pop = elimed_pop + pop_rand
+        return pop_rand
+
+    def mode_replace(elimed_pop, insert_count):
+        pop_leftover = LeftoverPopulation.leftover_population
+        chooseflags = CrowdingMode._rand_bool(insert_count, pop_leftover.sizes)
+        pop_choose = pop_leftover[chooseflags]
+        pop = elimed_pop + pop_choose
+        return pop
+
+    def _rand_bool(true_count, length):
+        # size of our array
+
+        # create an array full of "False"
+        chooseflags = np.full((length,), False)
+
+        # create a list of randomly picked indices, one for each row
+        idx = np.arange(length)
+        np.random.shuffle(idx)
+        # idx = np.random.randint(2, size=true_count)
+
+        # replace "False" by "True" at given indices
+        chooseflags[idx[:true_count]] = True
+        return chooseflags
 
 
 class ChromoCalcV3:
@@ -41,12 +73,6 @@ class ChromoCalcV3:
         better_at_least_one_obj = obj_self[0] < obj_other[0] or obj_self[1] < obj_other[1]
         better_or_equal_for_all_obj = obj_self[0] <= obj_other[0] and obj_self[1] <= obj_other[1]
         return better_or_equal_for_all_obj and better_at_least_one_obj
-
-    def a_dominates_b(self, obj_a, obj_b):
-        return self._dominates(obj_a, obj_b)
-
-    # def __arreq_in_list(self, arr, list_arrays):
-    #     return next((True for elem in list_arrays if np.array_equal(elem, arr)), False)
 
     def _fast_nondominated_sorting(self, pop):
         chromos = pop.Chrom.copy()
@@ -85,61 +111,82 @@ class ChromoCalcV3:
         dist = np.count_nonzero(self_chromo != other_chromo)
         return dist
 
-    def _set_chromo_crowding(self, pop, idx_chromo_need_replace):
-        insert_count = len(idx_chromo_need_replace)
-        chromos = pop.Chrom[idx_chromo_need_replace]
-        pop.Chrom = np.delete(pop.Chrom, idx_chromo_need_replace, 0)
-        pop.Phen = np.delete(pop.Phen, idx_chromo_need_replace, 0)
+    def _set_chromo_crowding(self, pop, need_elim):
+        insert_count = np.count_nonzero(need_elim)
+        if insert_count == 0:
+            return
+        pop_copy = pop.copy()
+        pop = pop_copy[~need_elim]
+        # chromos = pop.Chrom[need_elim]
+        # pop = np.delete(pop, idx_chromo_need_replace, 0)
+        # pop.Chrom = np.delete(pop.Chrom, need_elim, 0)
+        # pop.Phen = np.delete(pop.Phen, need_elim, 0)
+        # pop.CV = np.delete(pop.Phen, need_elim, 0)
+        # pop.ObjV = np.delete(pop.Phen, need_elim, 0)
         if self.config.hamming_crowding_mode == "random":
-            for _ in range(insert_count):
-                if self.config.robots_count == 1:
-                    need_append = np.arange(1, self.px.shape[0] + 1)
-                else:
-                    need_append = np.arange(self.robots[-2].delimiter, self.px.shape[0] + 1)
-                np.random.shuffle(need_append)
-                pop.Chrom = np.vstack((pop.Chrom, need_append))
-                pop.Phen = np.vstack((pop.Phen, need_append))
+            # for _ in range(insert_count):
+            #     if self.config.robots_count == 1:
+            #         need_append = np.arange(1, self.px.shape[0] + 1)
+            #     else:
+            #         need_append = np.arange(self.robots[-2].delimiter, self.px.shape[0] + 1)
+            #     np.random.shuffle(need_append)
+            #     pop.Chrom = np.vstack((pop.Chrom, need_append))
+            #     pop.Phen = np.vstack((pop.Phen, need_append))
+            poped = CrowdingMode.mode_random(pop, insert_count)
+            score_dist = np.ones((poped.sizes, 1))
+            score_unif = np.ones((poped.sizes, 1))
+            for chromo_id in range(poped.sizes):
+                score_all = self.score_step(pop.Chrom[chromo_id, :])
+                score_dist[chromo_id] = score_all[0]
+                # aim2 手臂點分佈最平均
+                score_unif[chromo_id] = score_all[1]
+            poped.CV = np.hstack((score_dist - 1000000, score_unif - 10000))
+            poped.ObjV = np.hstack((score_dist, score_unif))
+            pop = pop + poped
         elif self.config.hamming_crowding_mode == "reverse":
-            delim_list = [self.robots[rb].delimiter for rb in range(self.config.robots_count)]
-            for i in range(len(idx_chromo_need_replace)):
-                # chromo = pop.Chrom[idx_chromo]
-                chromo = chromos[i]
-                num = 0
-                pre_i = 0
-                need_append = np.zeros((0,))
-                for i, gene in enumerate(chromo):
-                    if gene in delim_list:
-                        temp = chromo[pre_i:i]
-                        pre_i = i + 1
-                        temp = np.flip(temp)
-                        need_append = np.hstack((need_append, temp, num))
-                        num -= 1
-                need_append = np.hstack((need_append, np.flip(chromo[pre_i:])))
-                need_append = need_append.astype(int)
-                pop.Chrom = np.vstack((pop.Chrom, need_append))
-                pop.Phen = np.vstack((pop.Phen, need_append))
+            # delim_list = [self.robots[rb].delimiter for rb in range(self.config.robots_count)]
+            # for i in range(insert_count):
+            #     chromo = chromos[i]
+            #     num = 0
+            #     pre_i = 0
+            #     need_append = np.zeros((0,))
+            #     for i, gene in enumerate(chromo):
+            #         if gene in delim_list:
+            #             temp = chromo[pre_i:i]
+            #             pre_i = i + 1
+            #             temp = np.flip(temp)
+            #             need_append = np.hstack((need_append, temp, num))
+            #             num -= 1
+            #     need_append = np.hstack((need_append, np.flip(chromo[pre_i:])))
+            #     need_append = need_append.astype(int)
+            #     pop.Chrom = np.vstack((pop.Chrom, need_append))
+            #     pop.Phen = np.vstack((pop.Phen, need_append))
+            try:
+                print("suspended")
+                raise RuntimeError("This mode is suspended.")
+            except RuntimeError as e:
+                print(repr(e))
+                raise
 
-                # pop.Chrom = temp_chromo
-                # pop.Phen = temp_chromo
+        elif self.config.hamming_crowding_mode == "replace":
+            poped = CrowdingMode.mode_replace(pop, insert_count)
+            pop = poped
 
     def hamming_crowding(self, pop, threshold):
         fonts = self._fast_nondominated_sorting(pop)
         n = []
+        need_elim = np.full((pop.sizes,), False)
         for f in fonts[0:-1]:
             i, chromo_1 = f[0]
             for i, chromo in f[1:]:
                 dist = self._hamming_distance(chromo_1, chromo)
                 if dist <= threshold:
+                    need_elim[i] = True
                     n.append(i)
         if len(n) > 0:
             print()
-        self._set_chromo_crowding(pop, n)
-        # pop.Chrom = np.delete(pop.Chrom, n, 0)
-        # pop.Phen = np.delete(pop.Phen, n, 0)
-        # for _ in range(len(n)):
-        #     need_append = np.arange(self.robots[-2].delimiter, self.px.shape[0] + 1)
-        #     np.random.shuffle(need_append)
-        #     pop.Chrom = np.vstack((pop.Chrom, need_append))
+        need_elim = np.array(need_elim)
+        self._set_chromo_crowding(pop, need_elim)
 
     def _need_preAdj(self, p_id: int, robot: Robot) -> bool:
         vv_robot = Coord(self.px[p_id], self.py[p_id], self.pz[p_id])
@@ -243,9 +290,6 @@ class ChromoCalcV3:
                 is_q_nan = np.isnan(q_2_best_rbs[rb])
                 if np.any(is_q_nan):
                     return None
-            # angle_changes_rbs.append(np.degrees(np.abs(q_2_best_rbs[rb] - q_1_best_rbs[rb])))
-
-        # return angle_changes_rbs, q_2_best_rbs
         return q_2_best_rbs
 
     def _get_interp_max_deg_between_points(
@@ -278,13 +322,11 @@ class ChromoCalcV3:
         q_2_best_rbs = self._get_best_q_2(p_id_rbs, q_1_best_rbs)
         if q_2_best_rbs is None:
             return None
-        # angle_changes_rbs, q_2_best_rbs = _angle_changes
 
         interp_q_rbs = []
         obj_values_rbs = []
         for rb in range(self.config.robots_count):
             if self.config.interp_mode == "max_deg":
-                # max_deg = int(np.max(angle_changes_rbs[rb]))
                 angle_changes = np.degrees(np.abs(q_2_best_rbs[rb] - q_1_best_rbs[rb]))
                 max_deg = int(np.max(angle_changes))
                 interp_q_rbs.append(
@@ -482,7 +524,7 @@ class ChromoCalcV3:
         std_rbs_angleOffset = std_rbs_angleOffset // 5 * 5
         return score_dist, std_rbs_angleOffset
 
-    def score_step(self, chromosome, logging) -> Tuple[float, float]:
+    def score_step(self, chromosome, logging=None) -> Tuple[float, float]:
         if self.config.robots_count == 1:
             obj_1, totalDistance = self.score_single_robot(chromosome, logging)
             return obj_1, totalDistance
@@ -499,18 +541,21 @@ class ChromoCalcV3:
                 collisionScore = 90000000
                 msg = "Out of Range! _ interp"
                 print(msg)
-                logging.save_status(msg)
+                if logging:
+                    logging.save_status(msg)
             else:
                 if self.is_collision(totalInt_q):
                     collisionScore = 1000000
                     msg = "Collision!"
                     print(msg)
-                    logging.save_status(msg)
+                    if logging:
+                        logging.save_status(msg)
                 else:
                     collisionScore = 0
                     msg = "Save!"
                     print(msg)
-                    logging.save_status(msg)
+                    if logging:
+                        logging.save_status(msg)
                     self.feasibleSol_count += 1
         else:
             obj_1 = 0
@@ -518,7 +563,8 @@ class ChromoCalcV3:
             obj_2 = 10000
             msg = "Out of Range! _ None"
             print(msg)
-            logging.save_status(msg)
+            if logging:
+                logging.save_status(msg)
         # self.feasibleSol_list.append(self.feasibleSol_count)
         obj_1 = obj_1 + collisionScore
         # obj_1 = obj_1 // 5 * 5
