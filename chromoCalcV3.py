@@ -81,16 +81,16 @@ class ChromoCalcV3:
         return fonts
 
     @staticmethod
-    def _distance(self_chromo, other_chromo):
+    def _hamming_distance(self_chromo, other_chromo):
         dist = np.count_nonzero(self_chromo != other_chromo)
         return dist
 
-    def _set_chromo(self, pop, idx_chromo_need_replace):
+    def _set_chromo_crowding(self, pop, idx_chromo_need_replace):
         insert_count = len(idx_chromo_need_replace)
         chromos = pop.Chrom[idx_chromo_need_replace]
         pop.Chrom = np.delete(pop.Chrom, idx_chromo_need_replace, 0)
         pop.Phen = np.delete(pop.Phen, idx_chromo_need_replace, 0)
-        if self.config.replace_mode == "random":
+        if self.config.hamming_crowding_mode == "random":
             for _ in range(insert_count):
                 if self.config.robots_count == 1:
                     need_append = np.arange(1, self.px.shape[0] + 1)
@@ -99,7 +99,7 @@ class ChromoCalcV3:
                 np.random.shuffle(need_append)
                 pop.Chrom = np.vstack((pop.Chrom, need_append))
                 pop.Phen = np.vstack((pop.Phen, need_append))
-        elif self.config.replace_mode == "reverse":
+        elif self.config.hamming_crowding_mode == "reverse":
             delim_list = [self.robots[rb].delimiter for rb in range(self.config.robots_count)]
             for i in range(len(idx_chromo_need_replace)):
                 # chromo = pop.Chrom[idx_chromo]
@@ -122,18 +122,18 @@ class ChromoCalcV3:
                 # pop.Chrom = temp_chromo
                 # pop.Phen = temp_chromo
 
-    def replace_chromosome(self, pop, threshold):
+    def hamming_crowding(self, pop, threshold):
         fonts = self._fast_nondominated_sorting(pop)
         n = []
         for f in fonts[0:-1]:
             i, chromo_1 = f[0]
             for i, chromo in f[1:]:
-                dist = self._distance(chromo_1, chromo)
+                dist = self._hamming_distance(chromo_1, chromo)
                 if dist <= threshold:
                     n.append(i)
         if len(n) > 0:
             print()
-        self._set_chromo(pop, n)
+        self._set_chromo_crowding(pop, n)
         # pop.Chrom = np.delete(pop.Chrom, n, 0)
         # pop.Phen = np.delete(pop.Phen, n, 0)
         # for _ in range(len(n)):
@@ -173,7 +173,7 @@ class ChromoCalcV3:
         if len(append_path_dest):
             self.robots[dest_rb].robot_path = np.hstack((self.robots[dest_rb].robot_path, append_path_dest))
 
-    def adj_chromo(self, chromosome: np.ndarray, chromo_id: int, pop) -> None:
+    def recombine_init_chromo(self, chromosome: np.ndarray, chromo_id: int, pop) -> None:
 
         self.set_robotsPath(chromosome)
 
@@ -685,7 +685,7 @@ class Trajectory:
         t_end = np.max(np.abs(angle_stop - angle_start)) / mean_ang_v
         joints_count = len(angle_start)
 
-        step_count = int((t_end - t_start) / step_period)
+        step_count = int((t_end - t_start) / step_period) + 1
         if step_count <= 2:
             return np.array([[t_start], [t_end]]), np.vstack((angle_start, angle_stop))
 
