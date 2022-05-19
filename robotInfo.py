@@ -73,18 +73,29 @@ class Config:
         with open(config_path, "r") as config_file:
             config = yaml.load(config_file)
         self.interp_mode = config["interp_mode"]
-        try:
+
+        if "interp_step_period" in config:
             self.interp_step_period = config["interp_step_period"]
-        except Exception:
+        elif "interp_step_freq" in config:
             self.interp_step_period = config["interp_step_freq"]
+
         self.mean_motion_velocity_rad = np.radians(config["mean_motion_velocity_deg"])
 
         self.custom_initChrom = config["custom_initChrom"]
-        self.adj_chromo = config["adj_chromo"]
 
-        self.replace_chromo = config["replace_chromo"][0]
-        self.replace_chromo_dist = config["replace_chromo"][1]
-        self.replace_mode = config["replace_chromo"][2]
+        if "is_recombine_init_chromo" in config:
+            self.is_recombine_init_chromo = config["is_recombine_init_chromo"]
+        elif "adj_chromo" in config:
+            self.is_recombine_init_chromo = config["adj_chromo"]
+
+        if "replace_chromo" in config:
+            self.is_hamming_crowding = config["replace_chromo"][0]
+            self.hamming_crowding_dist = config["replace_chromo"][1]
+            self.hamming_crowding_mode = config["replace_chromo"][2]
+        elif "is_hamming_crowding" in config:
+            self.is_hamming_crowding = config["is_hamming_crowding"][0]
+            self.hamming_crowding_dist = config["is_hamming_crowding"][1]
+            self.hamming_crowding_mode = config["is_hamming_crowding"][2]
 
         self.robots_count = config["robots_count"]
         self.points_range = config["points_range"]

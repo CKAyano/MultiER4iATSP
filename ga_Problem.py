@@ -13,8 +13,8 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         config = Config(config_path)
 
         robots_count = config.robots_count
-        replace_chromo = config.replace_chromo
-        adj_chromo = config.adj_chromo
+        is_hamming_crowding = config.is_hamming_crowding
+        is_recombine_init_chromo = config.is_recombine_init_chromo
         custom_initChrom = config.custom_initChrom
         points_range = config.points_range
         link_width = config.link_width
@@ -41,8 +41,8 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                 # file = open(f"./Result/info.txt", "w")
                 file.write(f'{"start time:":<25}' + f'{datetime.datetime.now().strftime("%y%m%d-%H%M%S")}\n')
                 file.write(f'{"number of robots:":<25}{robots_count}\n')
-                file.write(f'{"replace chromosome:":<25}{replace_chromo}\n')
-                file.write(f'{"adjust chromosome:":<25}{adj_chromo}\n')
+                file.write(f'{"hamming crowding:":<25}{is_hamming_crowding}\n')
+                file.write(f'{"recombine init chromosome:":<25}{is_recombine_init_chromo}\n')
                 file.write(f'{"fix init chromosome:":<25}{custom_initChrom}\n')
                 file.write(f'{"points range:":<25}{points_range}\n')
                 file.write(f'{"number of points:":<25}{points_count}\n')
@@ -68,8 +68,8 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         for chromo_id in range(nind):
             # aim1 總加工時間最短
             if self.is_firstImp:
-                if self.ccv3.config.adj_chromo:
-                    self.ccv3.adj_chromo(pop.Chrom[chromo_id, :], chromo_id, pop)
+                if self.ccv3.config.is_recombine_init_chromo:
+                    self.ccv3.recombine_init_chromo(pop.Chrom[chromo_id, :], chromo_id, pop)
             score_all = self.ccv3.score_step(pop.Chrom[chromo_id, :], self.logging)
             score_dist[chromo_id] = score_all[0]
             # aim2 手臂點分佈最平均
