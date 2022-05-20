@@ -59,6 +59,7 @@ class ChromoCalcV3:
         position = [Position.LEFT, Position.RIGHT, Position.UP, Position.DOWN]
         for i in range(self.config.robots_count):
             self.robots.append(Robot(i, position[i]))
+        #
 
     @staticmethod
     def _dominates(obj_self: np.ndarray, obj_other: np.ndarray) -> bool:
