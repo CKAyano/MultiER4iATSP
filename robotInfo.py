@@ -71,7 +71,7 @@ class Robot:
 class Config:
     def __init__(self, config_path) -> None:
         with open(config_path, "r") as config_file:
-            config = yaml.load(config_file)
+            config = yaml.load(config_file, Loader=yaml.FullLoader)
         self.interp_mode = config["interp_mode"]
         try:
             self.interp_step_period = config["interp_step_period"]

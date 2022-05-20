@@ -13,7 +13,7 @@ import yaml
 
 CONFIG_PATH: str = "./CONFIG.yml"
 with open("./GA_PARAM.yml", "r") as ga_param_file:
-    ga_param = yaml.load(ga_param_file)
+    ga_param = yaml.load(ga_param_file, Loader=yaml.FullLoader)
 # GEN_LIST: List = [5000, 1000, 500]
 GEN_LIST: List = ga_param["GEN_LIST"]
 NIND: int = ga_param["NIND"]
