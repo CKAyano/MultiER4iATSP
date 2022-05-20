@@ -1,6 +1,7 @@
 from argparse import ArgumentError
 from email import header
 from enum import Enum, auto
+from operator import delitem
 from statistics import mean, stdev
 import numpy as np
 from chromoCalcV3 import ChromoCalcV3
@@ -21,6 +22,7 @@ import tkinter as tk
 from PIL import Image, ImageTk
 from tkinter import ttk, filedialog
 import tkfilebrowser as tkf
+from mpl_toolkits.mplot3d import Axes3D
 
 
 class DrawRobots:
@@ -193,6 +195,28 @@ class DrawRobots:
             path = f"./ValidityFigure/{self.folderName[11:]}/ChromID_{i}/animate.gif"
             imageio.mimsave(path, images, format="GIF", fps=fps)
 
+    def draw_manuf_dist(self):
+        points = np.genfromtxt(f"{self.folderName}/output_point.csv", delimiter=",")
+        fig = plt.figure(dpi=200)
+        ax = Axes3D(fig, elev=60)
+        ax.plot(
+            points[:, 0],
+            points[:, 1],
+            points[:, 2],
+            linestyle="",
+            marker="o",
+            markerfacecolor="orangered",
+            markersize="10",
+        )
+        # ax.set_xlim3d((0, 900))
+        # ax.set_ylim3d((-450, 450))
+        # ax.set_zlim3d((45, 55))
+        self.set_axes_equal(ax)
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_zlabel("z")
+        plt.show()
+
     def draw_manuf_route(self, is_connect: Optional[bool] = None):
         ccv3 = ChromoCalcV3(self.config, self.points, 0, 1, [])
         chroms = np.genfromtxt(f"{self.folderName}/Chrom.csv", delimiter=",", dtype="int32")
@@ -224,6 +248,25 @@ class DrawRobots:
 
             plt.savefig(f"./ValidityFigure/{self.folderName[11:]}/ChromID_{c}/manuf_route.png")
             plt.show()
+
+    @staticmethod
+    def set_axes_equal(ax):
+        x_limits = ax.get_xlim3d()
+        y_limits = ax.get_ylim3d()
+        z_limits = ax.get_zlim3d()
+
+        x_range = abs(x_limits[1] - x_limits[0])
+        x_middle = np.mean(x_limits)
+        y_range = abs(y_limits[1] - y_limits[0])
+        y_middle = np.mean(y_limits)
+        z_range = abs(z_limits[1] - z_limits[0])
+        z_middle = np.mean(z_limits)
+
+        plot_radius = 0.5 * max([x_range, y_range, z_range])
+
+        ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
+        ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
+        ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
 
 
 def c_measurement(obj_a_all: np.ndarray, obj_b_all: np.ndarray) -> float:
@@ -635,8 +678,9 @@ class Single_Robot:
 
 
 if __name__ == "__main__":
-    dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226")
-    dr.draw_manuf_route()
+    # dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226")
+    dr = DrawRobots("../ps_result")
+    dr.draw_manuf_dist()
     # dr.config.baseX_offset -= 200
     # q_best_1 = np.radians(np.array([[0, 60, -20, 0, -90, 0]]))
     # q_best_2 = np.radians(np.array([[0, 60, -20, 0, -90, 0]]))
