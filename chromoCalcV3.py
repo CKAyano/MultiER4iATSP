@@ -25,17 +25,9 @@ class CrowdingMode:
         return pop
 
     def _rand_bool(true_count, length):
-        # size of our array
-
-        # create an array full of "False"
         chooseflags = np.full((length,), False)
-
-        # create a list of randomly picked indices, one for each row
         idx = np.arange(length)
         np.random.shuffle(idx)
-        # idx = np.random.randint(2, size=true_count)
-
-        # replace "False" by "True" at given indices
         chooseflags[idx[:true_count]] = True
         return chooseflags
 
