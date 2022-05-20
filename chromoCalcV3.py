@@ -59,7 +59,6 @@ class ChromoCalcV3:
         position = [Position.LEFT, Position.RIGHT, Position.UP, Position.DOWN]
         for i in range(self.config.robots_count):
             self.robots.append(Robot(i, position[i]))
-        #
 
     @staticmethod
     def _dominates(obj_self: np.ndarray, obj_other: np.ndarray) -> bool:
@@ -104,56 +103,26 @@ class ChromoCalcV3:
         dist = np.count_nonzero(self_chromo != other_chromo)
         return dist
 
-    def _set_chromo_crowding(self, pop, need_elim):
+    def _get_chromo_after_crowding(self, pop_before, need_elim):
         insert_count = np.count_nonzero(need_elim)
         if insert_count == 0:
-            return
-        pop_copy = pop.copy()
-        pop = pop_copy[~need_elim]
-        # chromos = pop.Chrom[need_elim]
-        # pop = np.delete(pop, idx_chromo_need_replace, 0)
-        # pop.Chrom = np.delete(pop.Chrom, need_elim, 0)
-        # pop.Phen = np.delete(pop.Phen, need_elim, 0)
-        # pop.CV = np.delete(pop.Phen, need_elim, 0)
-        # pop.ObjV = np.delete(pop.Phen, need_elim, 0)
+            return pop_before
+        pop_copy = pop_before.copy()
+        pop_elimed = pop_copy[~need_elim]
+
         if self.config.hamming_crowding_mode == "random":
-            # for _ in range(insert_count):
-            #     if self.config.robots_count == 1:
-            #         need_append = np.arange(1, self.px.shape[0] + 1)
-            #     else:
-            #         need_append = np.arange(self.robots[-2].delimiter, self.px.shape[0] + 1)
-            #     np.random.shuffle(need_append)
-            #     pop.Chrom = np.vstack((pop.Chrom, need_append))
-            #     pop.Phen = np.vstack((pop.Phen, need_append))
-            poped = CrowdingMode.mode_random(pop, insert_count)
-            score_dist = np.ones((poped.sizes, 1))
-            score_unif = np.ones((poped.sizes, 1))
-            for chromo_id in range(poped.sizes):
-                score_all = self.score_step(pop.Chrom[chromo_id, :])
+            pop_need_added = CrowdingMode.mode_random(pop_elimed, insert_count)
+            score_dist = np.ones((pop_need_added.sizes, 1))
+            score_unif = np.ones((pop_need_added.sizes, 1))
+            for chromo_id in range(pop_need_added.sizes):
+                score_all = self.score_step(pop_elimed.Chrom[chromo_id, :])
                 score_dist[chromo_id] = score_all[0]
-                # aim2 手臂點分佈最平均
                 score_unif[chromo_id] = score_all[1]
-            poped.CV = np.hstack((score_dist - 1000000, score_unif - 10000))
-            poped.ObjV = np.hstack((score_dist, score_unif))
-            pop = pop + poped
+            pop_need_added.CV = np.hstack((score_dist - 1000000, score_unif - 10000))
+            pop_need_added.ObjV = np.hstack((score_dist, score_unif))
+            pop_after = pop_elimed + pop_need_added
+
         elif self.config.hamming_crowding_mode == "reverse":
-            # delim_list = [self.robots[rb].delimiter for rb in range(self.config.robots_count)]
-            # for i in range(insert_count):
-            #     chromo = chromos[i]
-            #     num = 0
-            #     pre_i = 0
-            #     need_append = np.zeros((0,))
-            #     for i, gene in enumerate(chromo):
-            #         if gene in delim_list:
-            #             temp = chromo[pre_i:i]
-            #             pre_i = i + 1
-            #             temp = np.flip(temp)
-            #             need_append = np.hstack((need_append, temp, num))
-            #             num -= 1
-            #     need_append = np.hstack((need_append, np.flip(chromo[pre_i:])))
-            #     need_append = need_append.astype(int)
-            #     pop.Chrom = np.vstack((pop.Chrom, need_append))
-            #     pop.Phen = np.vstack((pop.Phen, need_append))
             try:
                 print("suspended")
                 raise RuntimeError("This mode is suspended.")
@@ -162,8 +131,10 @@ class ChromoCalcV3:
                 raise
 
         elif self.config.hamming_crowding_mode == "replace":
-            poped = CrowdingMode.mode_replace(pop, insert_count)
-            pop = poped
+            pop_added = CrowdingMode.mode_replace(pop_elimed, insert_count)
+            pop_after = pop_added
+
+        return pop_after
 
     def hamming_crowding(self, pop, threshold):
         fonts = self._fast_nondominated_sorting(pop)
@@ -179,7 +150,8 @@ class ChromoCalcV3:
         if len(n) > 0:
             print()
         need_elim = np.array(need_elim)
-        self._set_chromo_crowding(pop, need_elim)
+        pop_after = self._get_chromo_after_crowding(pop, need_elim)
+        return pop_after
 
     def _need_preAdj(self, p_id: int, robot: Robot) -> bool:
         vv_robot = Coord(self.px[p_id], self.py[p_id], self.pz[p_id])

@@ -116,7 +116,7 @@ class moea_NSGA3_modified(ea.MoeaAlgorithm):
             population = self.reinsertion(population, offspring, NIND, uniformPoint)
             if self.problem.ccv3.config.is_hamming_crowding:
                 if self.gen < self.MAXGEN:
-                    self.problem.ccv3.hamming_crowding(
+                    population = self.problem.ccv3.hamming_crowding(
                         population, self.problem.ccv3.config.hamming_crowding_dist
                     )
         self.problem.logging.save_chrom(population.Chrom)
