@@ -3,6 +3,7 @@ import geatpy as ea  # 导入geatpy库
 from sys import path as paths
 from os import path as path
 import numpy as np
+from chromoCalcV3 import LeftoverPopulation
 
 paths.append(path.split(path.split(path.realpath(__file__))[0])[0])
 
@@ -74,6 +75,7 @@ class moea_NSGA3_modified(ea.MoeaAlgorithm):
         chooseFlag = ea.refselect(
             population.ObjV, levels, criLevel, NUM, uniformPoint, self.problem.maxormins
         )  # 根据参考点的“入龛”个体筛选
+        LeftoverPopulation.leftover_population = population[~chooseFlag]
         return population[chooseFlag]
 
     def run(self, prophetPop=None):  # prophetPop为先知种群（即包含先验知识的种群）
@@ -94,10 +96,10 @@ class moea_NSGA3_modified(ea.MoeaAlgorithm):
         if prophetPop is not None:
             population = (prophetPop + population)[:NIND]  # 插入先知种群
         # ===========================开始进化============================
-        gen = 1
+        self.gen = 1
         population.isFirstImp = False
         while self.terminated(population) is False:
-            gen += 1
+            self.gen += 1
             # 选择个体参与进化
             offspring = population[ea.selecting(self.selFunc, population.sizes, NIND)]
             # 对选出的个体进行进化操作
@@ -105,14 +107,17 @@ class moea_NSGA3_modified(ea.MoeaAlgorithm):
             offspring.Chrom = self.mutOper.do(offspring.Encoding, offspring.Chrom, offspring.Field)  # 变异
             self.call_aimFunc(offspring)  # 求进化后个体的目标函数值
             # TODO 每1000代存
-            if gen % 1000 == 0:
-                np.savetxt(f"./Result/Chrom_per1000/chrom_gen_{gen}.csv", population.Chrom, delimiter=",")
-            if self.problem.ccv3.config.replace_chromo:
-                if gen < self.MAXGEN:
-                    self.problem.ccv3.replace_chromosome(
-                        offspring, self.problem.ccv3.config.replace_chromo_dist
-                    )
+            if self.gen % 1000 == 0:
+                np.savetxt(
+                    f"./Result/Chrom_per1000/chrom_gen_{self.gen}.csv", population.Chrom, delimiter=","
+                )
+
             # 重插入生成新一代种群
             population = self.reinsertion(population, offspring, NIND, uniformPoint)
+            if self.problem.ccv3.config.is_hamming_crowding:
+                if self.gen < self.MAXGEN:
+                    self.problem.ccv3.hamming_crowding(
+                        population, self.problem.ccv3.config.hamming_crowding_dist
+                    )
         self.problem.logging.save_chrom(population.Chrom)
         return self.finishing(population)  # 调用finishing完成后续工作并返回结果

@@ -3,16 +3,16 @@ robots_count: 2
 # interp_mode: "max_deg", "poly_traj"
 interp_mode: "poly_traj"
 
-interp_step_freq: 0.05
+interp_step_period: 0.05
 
 mean_motion_velocity_deg: 100
 
-replace_chromo:
+is_hamming_crowding:
   - True
-  - 20
+  - 10
   - "random"
 
-adj_chromo: True
+is_recombine_init_chromo: True
 
 custom_initChrom: True
 

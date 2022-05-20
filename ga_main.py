@@ -136,9 +136,9 @@ def main() -> None:
     filepath_mode = "no_replace"
     result_paht_2 = ""
 
-    if problem.ccv3.config.replace_chromo is True:
-        filepath_mode = problem.ccv3.config.replace_mode
-        result_paht_2 = f"/Hamming{problem.ccv3.config.replace_chromo_dist}"
+    if problem.ccv3.config.is_hamming_crowding is True:
+        filepath_mode = problem.ccv3.config.hamming_crowding_mode
+        result_paht_2 = f"/Hamming{problem.ccv3.config.hamming_crowding_dist}"
 
     result_path_1 = (
         f"./[Result]/{filepath_rbcount}/{filepath_points_count}"
