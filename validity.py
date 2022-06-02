@@ -100,7 +100,9 @@ class DrawRobots:
             cphs.append(_cph)
         return cphs
 
-    def _draw_cph_vs_seg(self, q_best: List[np.ndarray], intPoint, save_path: str, axis=None):
+    def _draw_cph_vs_seg(
+        self, q_best: List[np.ndarray], intPoint, save_path: Optional[str] = None, axis=None, is_show=True
+    ):
         cphs = self._cph_vs_seg_robots(q_best, intPoint)
 
         inter1 = gm.calc.intersection(cphs[0], cphs[2])
@@ -139,18 +141,23 @@ class DrawRobots:
             pass
         else:
             r.add((inter4, color_inter, 5), normal_length=0)
-        # r.show(axis=axis, dpi=200)
-        r.savefigure(save_path, axis)
 
-    def draw(self, q_best: List[np.ndarray], intPoint, save_path: str, axis=None):
+        if is_show:
+            r.show(axis=axis, dpi=200)
+        if save_path:
+            r.savefigure(save_path, axis)
+
+    def draw(self, q_best: List[np.ndarray], intPoint, save_path=None, axis=None, is_show=True):
         cphs = self.cph_robots(q_best, intPoint)
         r = gm.render.Renderer()
 
         for rb in range(self.config.robots_count):
             r.add((cphs[rb][0], self.robots_color[rb], 1), normal_length=0)
             r.add((cphs[rb][1], self.robots_color[rb], 1), normal_length=0)
-        # r.show()
-        r.savefigure(save_path, axis)
+        if is_show:
+            r.show(dpi=200, axis=axis)
+        if save_path:
+            r.savefigure(save_path, axis)
 
     def chrom_to_png(self, is_log: Optional[bool] = None, axis=None):
         ccv3 = ChromoCalcV3(self.config, self.points, 0, 1, [])
@@ -739,6 +746,17 @@ def draw_figure():
     dr.draw_pareto()
 
 
+def draw_robot():
+    dr = DrawRobots("./[Result]/Robot_4/noStep/Gen10000/random/Hamming30/220312-151028")
+
+    q_best_1 = np.radians(np.array([[0, 10, -10, 0, -90, 0]]))
+    q_best_2 = np.radians(np.array([[0, 10, -10, 0, -90, 0]]))
+    q_best_3 = np.radians(np.array([[0, 10, -10, 0, -90, 0]]))
+    q_best_4 = np.radians(np.array([[0, 10, -10, 0, -90, 0]]))
+
+    dr.draw([q_best_1, q_best_2, q_best_3, q_best_4], 0, axis=[[-100, 1000], [-550, 550], [-350, 350]])
+
+
 if __name__ == "__main__":
     # dr.config.baseX_offset -= 200
     # q_best_1 = np.radians(np.array([[0, 60, -20, 0, -90, 0]]))
@@ -767,4 +785,5 @@ if __name__ == "__main__":
     # test = ccv3.interpolation_step(chrom[3, :])
     # print()
 
-    index_test()
+    # index_test()
+    draw_robot()

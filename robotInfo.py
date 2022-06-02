@@ -72,14 +72,19 @@ class Config:
     def __init__(self, config_path) -> None:
         with open(config_path, "r") as config_file:
             config = yaml.load(config_file, Loader=yaml.FullLoader)
-        self.interp_mode = config["interp_mode"]
+
+        if "interp_mode" in config:
+            self.interp_mode = config["interp_mode"]
+        else:
+            self.interp_mode = "max_deg"
 
         if "interp_step_period" in config:
             self.interp_step_period = config["interp_step_period"]
         elif "interp_step_freq" in config:
             self.interp_step_period = config["interp_step_freq"]
 
-        self.mean_motion_velocity_rad = np.radians(config["mean_motion_velocity_deg"])
+        if "mean_motion_velocity_deg" in config:
+            self.mean_motion_velocity_rad = np.radians(config["mean_motion_velocity_deg"])
 
         self.custom_initChrom = config["custom_initChrom"]
 
