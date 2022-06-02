@@ -1,5 +1,8 @@
 from chromoCalcV3 import Trajectory
+from robotCalc_pygeos import RobotCalc_pygeos
 import numpy as np
+
+from robotInfo import Config, Coord
 
 
 def main() -> None:
@@ -17,5 +20,14 @@ def main() -> None:
     print(s_all)
 
 
+def ik_test():
+    config = Config("./CONFIG.yml")
+    rb = RobotCalc_pygeos(config)
+    p = Coord(300, 20, 0)
+    ik = rb.userIK(p)
+    print(ik)
+
+
 if __name__ == "__main__":
-    main()
+    # main()
+    ik_test()

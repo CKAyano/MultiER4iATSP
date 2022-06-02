@@ -272,8 +272,8 @@ class DrawRobots:
         objV = IndexComparision._sort_obj_value(objV)
         plt.plot(objV[:, 0], objV[:, 1], "ro")
         plt.title("Pareto Front")
-        plt.xlabel(r"$\sigma$")
-        plt.ylabel("T")
+        plt.xlabel(r"$T$")
+        plt.ylabel(r"$\sigma$")
         plt.savefig(f"{path_save}/pareto.png")
         plt.cla()
         plt.clf()
@@ -708,17 +708,38 @@ class Single_Robot:
         )
 
 
-if __name__ == "__main__":
-    # dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226")
-    # dr = DrawRobots(
-    #     "./[Result]/Robot_2/points_count25/noStep/Gen10000/random/Hamming5/poly_traj/220513-211237"
-    # )
-    # dr = DrawRobots(
-    #     "./[Result]/Robot_2/points_count50/noStep/Gen10000/random/Hamming10/poly_traj/220513-110428"
-    # )
+def index_test():
+    f_1 = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming10/poly_traj"
+    f_2 = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming20/poly_traj"
+    f_3 = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming30/poly_traj"
+    f_4 = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming40/poly_traj"
+    f_5 = "./[Result]/Robot_2/points_count100/noStep/Gen10000/no_replace/poly_traj"
+    un = IndexComparision._find_utopia_nadir(f_1, f_2, f_3, f_4, f_5)
+
+    folder_self_path = "./[Result]/Robot_2/points_count100/noStep/Gen10000/no_replace/poly_traj"
+    folder_other_path = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming40/poly_traj"
+    res_c = IndexComparision.main_cIndex(folder_self_path, folder_other_path)
+    res_dm = IndexComparision.main_distribution_metric(DMType.DM, folder_self_path, folder_other_path, un=un)
+    print(res_c[1])
+    print(res_dm[1])
+    print(res_dm[2])
+
+
+def draw_figure():
+    dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226")
+    dr = DrawRobots(
+        "./[Result]/Robot_2/points_count25/noStep/Gen10000/random/Hamming5/poly_traj/220513-211237"
+    )
+    dr = DrawRobots(
+        "./[Result]/Robot_2/points_count50/noStep/Gen10000/random/Hamming10/poly_traj/220513-110428"
+    )
     dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming20/poly_traj/220421-180516")
+    dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/no_replace/poly_traj/220419-203253")
     dr.draw_manuf_route(is_connect=True)
     dr.draw_pareto()
+
+
+if __name__ == "__main__":
     # dr.config.baseX_offset -= 200
     # q_best_1 = np.radians(np.array([[0, 60, -20, 0, -90, 0]]))
     # q_best_2 = np.radians(np.array([[0, 60, -20, 0, -90, 0]]))
@@ -746,18 +767,4 @@ if __name__ == "__main__":
     # test = ccv3.interpolation_step(chrom[3, :])
     # print()
 
-    # f_1 = "./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj"
-    # f_2 = "./[Result]/Robot_2/noStep/Gen10000/random/Hamming20/poly_traj"
-    # f_3 = "./[Result]/Robot_2/noStep/Gen10000/random/Hamming30/poly_traj/dm_test"
-    # f_4 = "./[Result]/Robot_2/noStep/Gen10000/random/Hamming40/poly_traj"
-    # un = IndexComparision._find_utopia_nadir(f_1, f_2, f_3, f_4)
-
-    # folder_self_path = "./[Result]/Robot_2/noStep/Gen10000/no_replace/poly_traj"
-    # folder_other_path = "./[Result]/Robot_2/noStep/Gen10000/random/Hamming40/poly_traj"
-    # res_c = IndexComparision.main_cIndex(folder_self_path, folder_other_path)
-    # res_dm = IndexComparision.main_distribution_metric(
-    #     DMType.DM, folder_self_path, folder_other_path, un=un
-    #     )
-    # print(res_c[1])
-    # print(res_dm[1])
-    # print(res_dm[2])
+    index_test()
