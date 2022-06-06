@@ -357,7 +357,7 @@ class RobotCalc_pygeos:
                 length_vec_2 = np.linalg.norm(vecCross_2)
                 normed_normalVec_2 = vecCross_2 / length_vec_2
                 if length_vec_1 == 0:
-                    normed_normalVec_1 = np.array([0, 1, 0])
+                    normed_normalVec_1 = np.array([1, 0, 0])
                 if length_vec_2 == 0:
                     normed_normalVec_2 = np.array([0, 1, 0])
             return v1_point, v2_point, normed_normalVec_1, normed_normalVec_2
