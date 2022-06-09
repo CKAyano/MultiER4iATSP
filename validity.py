@@ -152,8 +152,8 @@ class DrawRobots:
         r = gm.render.Renderer()
 
         for rb in range(self.config.robots_count):
-            r.add((cphs[rb][0], self.robots_color[rb], 1), normal_length=0)
-            r.add((cphs[rb][1], self.robots_color[rb], 1), normal_length=0)
+            r.add((cphs[rb][0], self.robots_color[rb], 3), normal_length=0)
+            r.add((cphs[rb][1], self.robots_color[rb], 3), normal_length=0)
         if is_show:
             r.show(dpi=200, axis=axis)
         if save_path:
@@ -724,7 +724,7 @@ def index_test():
     un = IndexComparision._find_utopia_nadir(f_1, f_2, f_3, f_4, f_5)
 
     folder_self_path = "./[Result]/Robot_2/points_count100/noStep/Gen10000/no_replace/poly_traj"
-    folder_other_path = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming40/poly_traj"
+    folder_other_path = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming30/poly_traj"
     res_c = IndexComparision.main_cIndex(folder_self_path, folder_other_path)
     res_dm = IndexComparision.main_distribution_metric(DMType.DM, folder_self_path, folder_other_path, un=un)
     print(res_c[1])
@@ -733,28 +733,35 @@ def index_test():
 
 
 def draw_figure():
-    dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226")
+    # dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226")
+    # dr = DrawRobots(
+    #     "./[Result]/Robot_2/points_count25/noStep/Gen10000/random/Hamming5/poly_traj/220513-211237"
+    # )
+    # dr = DrawRobots(
+    #     "./[Result]/Robot_2/points_count50/noStep/Gen10000/random/Hamming10/poly_traj/220513-110428"
+    # )
+    # dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming20/poly_traj/220421-180516")
+    # dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/no_replace/poly_traj/220419-203253")
     dr = DrawRobots(
-        "./[Result]/Robot_2/points_count25/noStep/Gen10000/random/Hamming5/poly_traj/220513-211237"
+        "./[Result]/Robot_4/points_count100/noStep/Gen5000/replace/Hamming20/poly_traj/220606-150353"
     )
-    dr = DrawRobots(
-        "./[Result]/Robot_2/points_count50/noStep/Gen10000/random/Hamming10/poly_traj/220513-110428"
-    )
-    dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming20/poly_traj/220421-180516")
-    dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/no_replace/poly_traj/220419-203253")
-    dr.draw_manuf_route(is_connect=True)
+    # dr.draw_manuf_route(is_connect=True)
     dr.draw_pareto()
 
 
 def draw_robot():
-    dr = DrawRobots("./[Result]/Robot_4/noStep/Gen10000/random/Hamming30/220312-151028")
+    # dr = DrawRobots("./[Result]/Robot_4/noStep/Gen10000/random/Hamming30/220312-151028")
+    dr = DrawRobots(
+        "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming10/poly_traj/220522-085023"
+    )
 
-    q_best_1 = np.radians(np.array([[0, 10, -10, 0, -90, 0]]))
-    q_best_2 = np.radians(np.array([[0, 10, -10, 0, -90, 0]]))
-    q_best_3 = np.radians(np.array([[0, 10, -10, 0, -90, 0]]))
-    q_best_4 = np.radians(np.array([[0, 10, -10, 0, -90, 0]]))
+    q_best_1 = np.radians(np.array([[0, 0, 0, 0, 0, 0]]))
+    q_best_2 = np.radians(np.array([[0, 0, 0, 0, 0, 0]]))
+    q_best_3 = np.radians(np.array([[0, 0, 0, 0, 0, 0]]))
+    q_best_4 = np.radians(np.array([[0, 0, 0, 0, 0, 0]]))
 
-    dr.draw([q_best_1, q_best_2, q_best_3, q_best_4], 0, axis=[[-100, 1000], [-550, 550], [-350, 350]])
+    # dr.draw([q_best_1, q_best_2, q_best_3, q_best_4], 0, axis=[[-100, 1000], [-550, 550], [-350, 350]])
+    dr.draw([q_best_1, q_best_2], 0, axis=[[-100, 1000], [-550, 550], [-350, 350]])
 
 
 if __name__ == "__main__":
@@ -784,6 +791,6 @@ if __name__ == "__main__":
     # )
     # test = ccv3.interpolation_step(chrom[3, :])
     # print()
-
-    # index_test()
-    draw_robot()
+    # draw_figure()
+    index_test()
+    # draw_robot()

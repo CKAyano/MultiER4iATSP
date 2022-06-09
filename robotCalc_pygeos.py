@@ -1,3 +1,4 @@
+from typing import List
 import numpy as np
 import pygeos.creation as pgc
 import pygeos.set_operations as pgi
@@ -14,6 +15,14 @@ d_4 = 290
 class RobotCalc_pygeos:
     def __init__(self, config: Config) -> None:
         self.config = config
+        if "zyx_euler" in self.config.__dict__ and "direct_array" not in self.config.__dict__:
+            self.end_effector_matrix = self._zyxeuler_to_homomatrix(self.config.zyx_euler)
+            self.joint_three2six = self._joint_three2six_from_first_joint
+        elif "direct_array" in self.config.__dict__ and "zyx_euler" not in self.config.__dict__:
+            # !! 此方向表示方法以第三軸座標方向當基準，不適合用於所有機械手臂
+            self.joint_three2six = self._joint_three2six_from_third_joint
+        else:
+            raise RuntimeError('choose either "direct_array" or "zyx_euler" in config file')
 
     def angleAdj(self, ax):
         for ii in range(len(ax)):
@@ -98,7 +107,7 @@ class RobotCalc_pygeos:
         q_all = self.joint_three2six(q)
         return q_all
 
-    def joint_three2six(self, q_array: np.ndarray) -> np.ndarray:
+    def _joint_three2six_from_third_joint(self, q_array: np.ndarray) -> np.ndarray:
         q_all = np.zeros((0, 6))
         len_q = q_array.shape[0]
         for i in range(len_q):
@@ -120,6 +129,47 @@ class RobotCalc_pygeos:
                 np.arctan2(Rd[2, 1] / np.sin(q5[0]), Rd[2, 0] / np.sin(q5[0])),
             ]
             q = np.array([[q1, q2, q3, q4[0], q5[0], q6[0]], [q1, q2, q3, q4[1], q5[1], q6[1]]])
+            q_all = np.vstack((q_all, q))
+        return q_all
+
+    def _zyxeuler_to_homomatrix(self, zyxeuler: List):
+        return EulerAngle.zyx2trans(zyxeuler[0], zyxeuler[1], zyxeuler[2])
+
+    def _joint_three2six_from_first_joint(self, q_array: np.ndarray) -> np.ndarray:
+        end_mat = self.end_effector_matrix
+        q_all = np.zeros((0, 6))
+        # len_q = q_array.shape[0]
+        for q in q_array:
+            c1 = np.cos(q[0])
+            s1 = np.sin(q[0])
+            c23 = np.cos(q[1] + q[2])
+            s23 = np.sin(q[1] + q[2])
+            r_ax = end_mat[0, 2]
+            r_ay = end_mat[1, 2]
+            r_az = end_mat[2, 2]
+            m5 = r_ax * c1 * c23 + r_ay * s1 * c23 - r_az * s23
+            q5 = [np.arccos(m5), -np.arccos(m5)]
+
+            m4_u = r_ax * s1 - r_ay * c1
+            m4_d = r_ax * c1 * s23 + r_ay * s1 * s23 + r_az * c23
+            q4 = [
+                np.arctan2(m4_u / np.sin(q5[1]), m4_d / np.sin(q5[1])),
+                np.arctan2(m4_u / np.sin(q5[0]), m4_d / np.sin(q5[0])),
+            ]
+
+            r_ox = end_mat[0, 1]
+            r_oy = end_mat[1, 1]
+            r_oz = end_mat[2, 1]
+            r_nx = end_mat[0, 0]
+            r_ny = end_mat[1, 0]
+            r_nz = end_mat[2, 0]
+            m6_u = -r_ox * c1 * c23 - r_oy * s1 * c23 + r_oz * s23
+            m6_d = r_nx * c1 * c23 + r_ny * s1 * c23 - r_nz * s23
+            q6 = [
+                np.arctan2(m6_u / np.sin(q5[1]), m6_d / np.sin(q5[1])),
+                np.arctan2(m6_u / np.sin(q5[0]), m6_d / np.sin(q5[0])),
+            ]
+            q = np.array([[q[0], q[1], q[2], q4[0], q5[0], q6[0]], [q[0], q[1], q[2], q4[1], q5[1], q6[1]]])
             q_all = np.vstack((q_all, q))
         return q_all
 
@@ -385,3 +435,72 @@ class RobotCalc_pygeos:
         p16 = v5_point + (-normalVec_3 - normalVec_4) * self.config.link_width / 2
         points = (p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16)
         return points
+
+
+class Coord_trans:
+    @staticmethod
+    def mat_rotx(alpha):
+        mat = np.array(
+            [
+                [1, 0, 0, 0],
+                [0, np.cos(alpha), -np.sin(alpha), 0],
+                [0, np.sin(alpha), np.cos(alpha), 0],
+                [0, 0, 0, 1],
+            ]
+        )
+        return mat
+
+    @staticmethod
+    def mat_roty(beta):
+        mat = np.array(
+            [
+                [np.cos(beta), 0, np.sin(beta), 0],
+                [0, 1, 0, 0],
+                [-np.sin(beta), 0, np.cos(beta), 0],
+                [0, 0, 0, 1],
+            ]
+        )
+        return mat
+
+    @staticmethod
+    def mat_rotz(theta):
+        mat = np.array(
+            [
+                [np.cos(theta), -np.sin(theta), 0, 0],
+                [np.sin(theta), np.cos(theta), 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1],
+            ]
+        )
+        return mat
+
+    @staticmethod
+    def mat_transl(transl_list: list):
+        mat = np.array(
+            [[1, 0, 0, transl_list[0]], [0, 1, 0, transl_list[1]], [0, 0, 1, transl_list[2]], [0, 0, 0, 1]]
+        )
+        return mat
+
+
+class EulerAngle:
+    @staticmethod
+    def trans2zyx(trans) -> List:
+        if np.sqrt(trans[0, 0] ** 2 + trans[1, 0] ** 2) == 0 and -trans[2, 0] == 1:
+            b = np.pi / 2
+            a = 0
+            r = np.atan2(trans[0, 1], trans[1, 1])
+        elif np.sqrt(trans[0, 0] ** 2 + trans[1, 0] ** 2) == 0 and -trans[2, 0] == -1:
+            b = -np.pi / 2
+            a = 0
+            r = -np.atan2(trans[0, 1], trans[1, 1])
+        else:
+            b = np.atan2(-trans[2, 0], np.sqrt(trans[0, 0] ** 2 + trans[1, 0] ** 2))
+            cb = np.cos(b)
+            a = np.atan2(trans[1, 0] / cb, trans[0, 0] / cb)
+            r = np.atan2(trans[2, 1] / cb, trans[2, 2] / cb)
+        return [a, b, r]
+
+    @staticmethod
+    def zyx2trans(alpha, beta, gamma) -> np.ndarray:
+        ct = Coord_trans
+        return ct.mat_rotz(alpha) @ ct.mat_roty(beta) @ ct.mat_rotx(gamma)

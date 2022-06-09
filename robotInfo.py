@@ -107,6 +107,9 @@ class Config:
         self.link_width = config["link_width"]
         self.org_pos = np.radians(np.array(config["org_pos"]))
         self.joints_range = np.radians(np.array(config["joints_range"]))
-        self.direct_array = np.array(config["direct_array"])
+        if "direct_array" in config:
+            self.direct_array = np.array(config["direct_array"])
+        if "zyx_euler" in config:
+            self.zyx_euler = np.array(config["zyx_euler"])
         self.baseX_offset = sum(self.points_range[0])
         self.baseY_offset = (self.points_range[1][1] - self.points_range[1][0]) / 2 + self.points_range[0][0]
