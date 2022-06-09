@@ -456,9 +456,9 @@ class IndexComparision:
         return folder_list
 
     def main_distribution_metric(method: DMType, *folders_paths, un):
-        # noRep_path = "./[Result]/noRep_10000Gen_noSlice"
-        # repRandom_path = "./[Result]/rep_10000Gen_noSlice"
-        # repReverse_path = "./[Result]/mode_reverse"
+        # noRep_path = "./all_results/noRep_10000Gen_noSlice"
+        # repRandom_path = "./all_results/rep_10000Gen_noSlice"
+        # repReverse_path = "./all_results/mode_reverse"
 
         folders_lists = []
         for path in folders_paths:
@@ -510,7 +510,7 @@ class IndexComparision:
         folder_other_list = os.listdir(folder_other_path)
         folder_other_list = IndexComparision._remove_private_folder_from_list(folder_other_list)
         datetime_now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-        path_output = f"./[Result]/c_measurement/{datetime_now}"
+        path_output = f"./all_results/c_measurement/{datetime_now}"
         Path(f"{path_output}/figure").mkdir(parents=True, exist_ok=True)
 
         win_self_count = 0
@@ -553,7 +553,7 @@ class IndexComparision:
         method_list = [DMType.SP, DMType.OS, DMType.DM]
         sheet_name = ["SP", "OS", "DM"]
         writer = pd.ExcelWriter(
-            f"./[Result]/metrics_compare/{datetime.datetime.now().strftime('%y%m%d-%H%M%S')}.xlsx",
+            f"./all_results/metrics_compare/{datetime.datetime.now().strftime('%y%m%d-%H%M%S')}.xlsx",
             engine="xlsxwriter",
         )
         for i, md in enumerate(method_list):
@@ -640,8 +640,8 @@ class ResultAnalyzeApp:
 
 class Single_Robot:
     def save_pareto() -> None:
-        objv_path_1 = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909"
-        objv_path_2 = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220316-114439"
+        objv_path_1 = "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909"
+        objv_path_2 = "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220316-114439"
         if os.path.exists(objv_path_1):
             objv_1 = np.genfromtxt(f"{objv_path_1}/ObjV.csv", delimiter=",")
             objv_2 = np.genfromtxt(f"{objv_path_2}/ObjV.csv", delimiter=",")
@@ -664,9 +664,9 @@ class Single_Robot:
                 file.write("No solution")
 
     def first_sol_export():
-        config = Config("./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/config.yml")
-        chromo_path = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/Chrom.csv"
-        points_path = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/output_point.csv"
+        config = Config("./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/config.yml")
+        chromo_path = "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/Chrom.csv"
+        points_path = "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/output_point.csv"
         chromo = np.genfromtxt(chromo_path, delimiter=",", dtype="int32")
         points = np.genfromtxt(points_path, delimiter=",")
         first_sol = chromo[0, :]
@@ -682,20 +682,20 @@ class Single_Robot:
             q_best = np.vstack((q_best, q_2_best))
             q_1_best = q_2_best
         np.savetxt(
-            "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/best_joints.csv",
+            "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/best_joints.csv",
             q_best,
             delimiter=",",
         )
         np.savetxt(
-            "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/points_first_sol.csv",
+            "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/points_first_sol.csv",
             points_first_sol,
             delimiter=",",
         )
 
     def ik_list():
-        config = Config("./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/config.yml")
+        config = Config("./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/config.yml")
         rc = RobotCalc_pygeos(config)
-        points_path = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/output_point.csv"
+        points_path = "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/output_point.csv"
         points = np.genfromtxt(points_path, delimiter=",")
         rb = Robot(0, Position.LEFT)
         first_three_idx = [0, 2, 4, 6]
@@ -709,22 +709,22 @@ class Single_Robot:
             id_pt_ik = np.hstack((id_pt_array, vv_ik_first_three))
             ik_all = np.vstack((ik_all, id_pt_ik))
         np.savetxt(
-            "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/points_all_ik.csv",
+            "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/points_all_ik.csv",
             ik_all,
             delimiter=",",
         )
 
 
 def index_test():
-    f_1 = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming10/poly_traj"
-    f_2 = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming20/poly_traj"
-    f_3 = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming30/poly_traj"
-    f_4 = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming40/poly_traj"
-    f_5 = "./[Result]/Robot_2/points_count100/noStep/Gen10000/no_replace/poly_traj"
+    f_1 = "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming10/poly_traj"
+    f_2 = "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming20/poly_traj"
+    f_3 = "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming30/poly_traj"
+    f_4 = "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming40/poly_traj"
+    f_5 = "./all_results/Robot_2/points_count100/noStep/Gen10000/no_replace/poly_traj"
     un = IndexComparision._find_utopia_nadir(f_1, f_2, f_3, f_4, f_5)
 
-    folder_self_path = "./[Result]/Robot_2/points_count100/noStep/Gen10000/no_replace/poly_traj"
-    folder_other_path = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming30/poly_traj"
+    folder_self_path = "./all_results/Robot_2/points_count100/noStep/Gen10000/no_replace/poly_traj"
+    folder_other_path = "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming30/poly_traj"
     res_c = IndexComparision.main_cIndex(folder_self_path, folder_other_path)
     res_dm = IndexComparision.main_distribution_metric(DMType.DM, folder_self_path, folder_other_path, un=un)
     print(res_c[1])
@@ -733,26 +733,26 @@ def index_test():
 
 
 def draw_figure():
-    # dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226")
+    # dr = DrawRobots("./all_results/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226")
     # dr = DrawRobots(
-    #     "./[Result]/Robot_2/points_count25/noStep/Gen10000/random/Hamming5/poly_traj/220513-211237"
+    #     "./all_results/Robot_2/points_count25/noStep/Gen10000/random/Hamming5/poly_traj/220513-211237"
     # )
     # dr = DrawRobots(
-    #     "./[Result]/Robot_2/points_count50/noStep/Gen10000/random/Hamming10/poly_traj/220513-110428"
+    #     "./all_results/Robot_2/points_count50/noStep/Gen10000/random/Hamming10/poly_traj/220513-110428"
     # )
-    # dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming20/poly_traj/220421-180516")
-    # dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/no_replace/poly_traj/220419-203253")
+    # dr = DrawRobots("./all_results/Robot_2/noStep/Gen10000/random/Hamming20/poly_traj/220421-180516")
+    # dr = DrawRobots("./all_results/Robot_2/noStep/Gen10000/no_replace/poly_traj/220419-203253")
     dr = DrawRobots(
-        "./[Result]/Robot_4/points_count100/noStep/Gen5000/replace/Hamming20/poly_traj/220606-150353"
+        "./all_results/Robot_4/points_count100/noStep/Gen5000/replace/Hamming20/poly_traj/220606-150353"
     )
     # dr.draw_manuf_route(is_connect=True)
     dr.draw_pareto()
 
 
 def draw_robot():
-    # dr = DrawRobots("./[Result]/Robot_4/noStep/Gen10000/random/Hamming30/220312-151028")
+    # dr = DrawRobots("./all_results/Robot_4/noStep/Gen10000/random/Hamming30/220312-151028")
     dr = DrawRobots(
-        "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming10/poly_traj/220522-085023"
+        "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming10/poly_traj/220522-085023"
     )
 
     q_best_1 = np.radians(np.array([[0, 0, 0, 0, 0, 0]]))
@@ -779,13 +779,14 @@ if __name__ == "__main__":
     # except Exception:
     #     pass
 
-    # config = Config("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/CONFIG.yml")
+    # config = Config("./all_results/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/CONFIG.yml")
     # points = np.genfromtxt(
-    #     "./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/output_point.csv", delimiter=","
+    #     "./all_results/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/output_point.csv",
+    #     delimiter=","
     # )
     # ccv3 = ChromoCalcV3(config, points, 0, 1, [])
     # chrom = np.genfromtxt(
-    #     f"./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/Chrom.csv",
+    #     f"./all_results/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/Chrom.csv",
     #     delimiter=",",
     #     dtype="int32",
     # )

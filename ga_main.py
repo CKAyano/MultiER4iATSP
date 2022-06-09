@@ -141,7 +141,7 @@ def main() -> None:
         result_paht_2 = f"/Hamming{problem.ccv3.config.hamming_crowding_dist}"
 
     result_path_1 = (
-        f"./[Result]/{filepath_rbcount}/{filepath_points_count}"
+        f"./all_results/{filepath_rbcount}/{filepath_points_count}"
         + f"/{filepath_step}/Gen{GEN_LIST[-1]}/{filepath_mode}"
     )
 
