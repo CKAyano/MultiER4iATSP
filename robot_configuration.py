@@ -76,7 +76,10 @@ class Config:
         with open(config_path, "r") as config_file:
             config = yaml.load(config_file, Loader=yaml.FullLoader)
 
-        self.robot_name = config["robot_name"]
+        if "robot_name" in config:
+            self.robot_name = config["robot_name"]
+        else:
+            self.robot_name = "fanuc"
 
         if "interp_mode" in config:
             self.interp_mode = config["interp_mode"]
@@ -121,6 +124,11 @@ class Config:
 
 
 class RobotKinematics(ABC):
+    @property
+    @abstractmethod
+    def collision_links(self) -> List[List]:
+        pass
+
     @abstractmethod
     def forward_kines(self, q: np.ndarray) -> Coord_all:
         pass
@@ -135,6 +143,8 @@ class FanucKinematics(RobotKinematics):
     a_2 = 260
     a_3 = 20
     d_4 = 290
+
+    collision_links = [["v2", "v4"], ["v4", "v5"]]
 
     def forward_kines(self, q: np.ndarray) -> Coord_all:
         try:
@@ -323,6 +333,11 @@ class FanucKinematics(RobotKinematics):
             q = np.array([[q[0], q[1], q[2], q4[0], q5[0], q6[0]], [q[0], q[1], q[2], q4[1], q5[1], q6[1]]])
             q_all = np.vstack((q_all, q))
         return q_all
+
+
+class PumaKinematics(RobotKinematics):
+    def forward_kines(self, q: np.ndarray) -> Coord_all:
+        return super().forward_kines(q)
 
 
 class Coord_trans:

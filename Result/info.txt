@@ -1,4 +1,4 @@
-start time:              220523-132316
+start time:              220610-155300
 number of robots:        2
 hamming crowding:        True
 recombine init chromosome:True
