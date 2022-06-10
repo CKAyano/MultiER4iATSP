@@ -3,177 +3,32 @@ import numpy as np
 import pygeos.creation as pgc
 import pygeos.set_operations as pgi
 import warnings
-from dataclasses import dataclass
-from robotInfo import Position, Robot, Coord, Coord_all, Config
-
-d_1 = 0
-a_2 = 260
-a_3 = 20
-d_4 = 290
+from robot_configuration import Position, Robot, Coord, Coord_all, Config, FanucKinematics
 
 
 class RobotCalc_pygeos:
     def __init__(self, config: Config) -> None:
         self.config = config
         if "zyx_euler" in self.config.__dict__ and "direct_array" not in self.config.__dict__:
-            self.end_effector_matrix = self._zyxeuler_to_homomatrix(self.config.zyx_euler)
-            self.joint_three2six = self._joint_three2six_from_first_joint
+            self.direction = self.config.zyx_euler
         elif "direct_array" in self.config.__dict__ and "zyx_euler" not in self.config.__dict__:
             # !! 此方向表示方法以第三軸座標方向當基準，不適合用於所有機械手臂
-            self.joint_three2six = self._joint_three2six_from_third_joint
+            self.direction = self.config.direct_array
+            print("-------- config: direct_array --------")
         else:
             raise RuntimeError('choose either "direct_array" or "zyx_euler" in config file')
 
-    def angleAdj(self, ax):
-        for ii in range(len(ax)):
-            while ax[ii] > np.pi:
-                ax[ii] = ax[ii] - np.pi * 2
+        if config.robot_name == "fanuc":
+            self.robot_kine = FanucKinematics()
 
-            while ax[ii] < -np.pi:
-                ax[ii] = ax[ii] + np.pi * 2
-        return ax
+    def userFK(self, q: np.ndarray) -> Coord_all:
+        return self.robot_kine.forward_kines(q)
 
     def userIK(self, vv: Coord) -> np.ndarray:
+        return self.robot_kine.inverse_kines(vv, self.direction)
 
-        px = vv.xx
-        py = vv.yy
-        pz = vv.zz
-
-        q1 = np.zeros(2)
-        q2 = np.zeros(4)
-        q3 = np.zeros(2)
-        q23 = np.zeros(4)
-        numq2 = -1
-
-        q1[0] = np.arctan2(py, px) - np.arctan2(0, np.sqrt(np.square(px) + np.square(py)))
-        q1[1] = np.arctan2(py, px) - np.arctan2(0, -np.sqrt(np.square(px) + np.square(py)))
-
-        k = (
-            np.square(d_1)
-            - 2 * d_1 * pz
-            + np.square(px)
-            + np.square(py)
-            + np.square(pz)
-            - np.square(a_3)
-            - np.square(d_4)
-            - np.square(a_2)
-        ) / (2 * a_2)
-
-        q3[0] = np.arctan2(a_3, d_4) - np.arctan2(k, np.sqrt(np.square(a_3) + np.square(d_4) - np.square(k)))
-        q3[1] = np.arctan2(a_3, d_4) - np.arctan2(
-            k, -np.sqrt(np.square(a_3) + np.square(d_4) - np.square(k))
-        )
-
-        for jj in range(2):
-            for ii in range(2):
-                numq2 = numq2 + 1
-                q23[numq2] = np.arctan2(
-                    (
-                        d_1 * d_4
-                        - d_4 * pz
-                        + a_3 * px * np.cos(q1[jj])
-                        - a_2 * d_1 * np.sin(q3[ii])
-                        + a_3 * py * np.sin(q1[jj])
-                        + a_2 * pz * np.sin(q3[ii])
-                        + a_2 * px * np.cos(q1[jj]) * np.cos(q3[ii])
-                        + a_2 * py * np.cos(q3[ii]) * np.sin(q1[jj])
-                    ),
-                    -(
-                        a_3 * d_1
-                        - a_3 * pz
-                        - a_2 * pz * np.cos(q3[ii])
-                        - d_4 * px * np.cos(q1[jj])
-                        - d_4 * py * np.sin(q1[jj])
-                        + a_2 * d_1 * np.cos(q3[ii])
-                        + a_2 * py * np.sin(q1[jj]) * np.sin(q3[ii])
-                        + a_2 * px * np.cos(q1[jj]) * np.sin(q3[ii])
-                    ),
-                )
-                q2[numq2] = q23[numq2] - q3[ii]
-
-        q1 = self.angleAdj(q1)
-        q2 = self.angleAdj(q2)
-        q3 = self.angleAdj(q3)
-
-        q1 = np.array([q1[0], q1[0], q1[1], q1[1]])
-        q3 = np.array([q3[0], q3[1], q3[0], q3[1]])
-
-        group_1 = np.hstack((q1[0], q2[0], q3[0]))
-        group_2 = np.hstack((q1[1], q2[1], q3[1]))
-        group_3 = np.hstack((q1[2], q2[2], q3[2]))
-        group_4 = np.hstack((q1[3], q2[3], q3[3]))
-
-        q = np.vstack((group_1, group_2, group_3, group_4))
-        q_all = self.joint_three2six(q)
-        return q_all
-
-    def _joint_three2six_from_third_joint(self, q_array: np.ndarray) -> np.ndarray:
-        q_all = np.zeros((0, 6))
-        len_q = q_array.shape[0]
-        for i in range(len_q):
-            q1 = q_array[i, 0]
-            q2 = q_array[i, 1]
-            q3 = q_array[i, 2]
-            R1 = np.array([[1, 0, 0], [0, np.cos(q1), -np.sin(q1)], [0, np.sin(q1), np.cos(q1)]])
-            R2 = np.array([[np.cos(-q2), 0, np.sin(-q2)], [0, 1, 0], [-np.sin(-q2), 0, np.cos(-q2)]])
-            R3 = np.array([[np.cos(-q3), 0, np.sin(-q3)], [0, 1, 0], [-np.sin(-q3), 0, np.cos(-q3)]])
-            R1_3 = R1.dot(R2).dot(R3)
-            Rd = np.linalg.inv(R1_3).dot(self.config.direct_array)
-            q5 = [np.arccos(Rd[2, 2]), -np.arccos(Rd[2, 2])]
-            q4 = [
-                np.arctan2(Rd[1, 2] / np.sin(q5[1]), Rd[0, 2] / np.sin(q5[1])),
-                np.arctan2(Rd[1, 2] / np.sin(q5[0]), Rd[0, 2] / np.sin(q5[0])),
-            ]
-            q6 = [
-                np.arctan2(Rd[2, 1] / np.sin(q5[1]), Rd[2, 0] / np.sin(q5[1])),
-                np.arctan2(Rd[2, 1] / np.sin(q5[0]), Rd[2, 0] / np.sin(q5[0])),
-            ]
-            q = np.array([[q1, q2, q3, q4[0], q5[0], q6[0]], [q1, q2, q3, q4[1], q5[1], q6[1]]])
-            q_all = np.vstack((q_all, q))
-        return q_all
-
-    def _zyxeuler_to_homomatrix(self, zyxeuler: List):
-        return EulerAngle.zyx2trans(zyxeuler[0], zyxeuler[1], zyxeuler[2])
-
-    def _joint_three2six_from_first_joint(self, q_array: np.ndarray) -> np.ndarray:
-        end_mat = self.end_effector_matrix
-        q_all = np.zeros((0, 6))
-        # len_q = q_array.shape[0]
-        for q in q_array:
-            c1 = np.cos(q[0])
-            s1 = np.sin(q[0])
-            c23 = np.cos(q[1] + q[2])
-            s23 = np.sin(q[1] + q[2])
-            r_ax = end_mat[0, 2]
-            r_ay = end_mat[1, 2]
-            r_az = end_mat[2, 2]
-            m5 = r_ax * c1 * c23 + r_ay * s1 * c23 - r_az * s23
-            q5 = [np.arccos(m5), -np.arccos(m5)]
-
-            m4_u = r_ax * s1 - r_ay * c1
-            m4_d = r_ax * c1 * s23 + r_ay * s1 * s23 + r_az * c23
-            q4 = [
-                np.arctan2(m4_u / np.sin(q5[1]), m4_d / np.sin(q5[1])),
-                np.arctan2(m4_u / np.sin(q5[0]), m4_d / np.sin(q5[0])),
-            ]
-
-            r_ox = end_mat[0, 1]
-            r_oy = end_mat[1, 1]
-            r_oz = end_mat[2, 1]
-            r_nx = end_mat[0, 0]
-            r_ny = end_mat[1, 0]
-            r_nz = end_mat[2, 0]
-            m6_u = -r_ox * c1 * c23 - r_oy * s1 * c23 + r_oz * s23
-            m6_d = r_nx * c1 * c23 + r_ny * s1 * c23 - r_nz * s23
-            q6 = [
-                np.arctan2(m6_u / np.sin(q5[1]), m6_d / np.sin(q5[1])),
-                np.arctan2(m6_u / np.sin(q5[0]), m6_d / np.sin(q5[0])),
-            ]
-            q = np.array([[q[0], q[1], q[2], q4[0], q5[0], q6[0]], [q[0], q[1], q[2], q4[1], q5[1], q6[1]]])
-            q_all = np.vstack((q_all, q))
-        return q_all
-
-    def greedy_search(self, q_f_best: np.ndarray, q_array: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def greedy_search(q_f_best: np.ndarray, q_array: np.ndarray) -> np.ndarray:
         diff_q1 = np.absolute(q_array[:, 0] - q_f_best[0])
         diff_q2 = np.absolute(q_array[:, 1] - q_f_best[1])
         diff_q3 = np.absolute(q_array[:, 2] - q_f_best[2])
@@ -192,47 +47,6 @@ class RobotCalc_pygeos:
         q_best = q_array[bestGroup_index, :]
 
         return q_best
-
-    def userFK(self, q: np.ndarray) -> Coord_all:
-        try:
-            if q.ndim > 1 and q.shape[0] > 1:
-                raise RuntimeError("theta can only import one set")
-        except RuntimeError as e:
-            print(repr(e))
-            raise
-        if q.ndim > 1:
-            q = np.squeeze(q)
-        c1 = np.cos(q[0])
-        s1 = np.sin(q[0])
-        c2 = np.cos(q[1])
-        s2 = np.sin(q[1])
-        c3 = np.cos(q[2])
-        s3 = np.sin(q[2])
-        c4 = np.cos(0)
-        s4 = np.sin(0)
-
-        axisM1 = np.array([[c1, 0, -s1, 0], [s1, 0, c1, 0], [0, -1, 0, d_1], [0, 0, 0, 1]])
-
-        axisM2 = np.array([[s2, c2, 0, a_2 * s2], [-c2, s2, 0, -a_2 * c2], [0, 0, 1, 0], [0, 0, 0, 1]])
-
-        axisM3 = np.array([[c3, 0, -s3, a_3 * c3], [s3, 0, c3, a_3 * s3], [0, -1, 0, 0], [0, 0, 0, 1]])
-
-        axisM4 = np.array([[c4, 0, s4, 0], [s4, 0, -c4, 0], [0, 1, 0, d_4], [0, 0, 0, 1]])
-
-        fk1 = axisM1
-        fk2 = fk1.dot(axisM2)
-        fk3 = fk2.dot(axisM3)
-        fk4 = fk3.dot(axisM4)
-
-        v1 = Coord(0, 0, 0)
-        v2 = Coord(fk1[0, 3], fk1[1, 3], fk1[2, 3])
-        v3 = Coord(fk2[0, 3], fk2[1, 3], fk2[2, 3])
-        v4 = Coord(fk3[0, 3], fk3[1, 3], fk3[2, 3])
-        v5 = Coord(fk4[0, 3], fk4[1, 3], fk4[2, 3])
-
-        v_all = Coord_all(v1, v2, v3, v4, v5)
-
-        return v_all
 
     def robot2world(self, vv_a: Coord, position: Position) -> Coord:
         vv_b = Coord(0, 0, 0)
@@ -253,24 +67,6 @@ class RobotCalc_pygeos:
             vv_b.yy = self.config.baseX_offset / 2 - vv_a.xx
             vv_b.zz = vv_a.zz
         return vv_b
-
-        # if self.config.mode == 2:
-        #     vv_a_list = [vv_a.xx, vv_a.yy, vv_a.zz]
-        #     if position == Position.LEFT:
-        #         i = 0
-        #     elif position == Position.RIGHT:
-        #         i = 1
-        #     elif position == Position.UP:
-        #         i = 2
-        #     elif position == Position.DOWN:
-        #         i = 3
-        #     h_02 = self.config.mat_transl(vv_a_list).dot(self.config.h01_rbs[2][i])
-        #     h_12 = self.config.h01_rbs[1][i].dot(h_02)
-        #     vv_b.xx = h_12[0, 3]
-        #     vv_b.yy = h_12[1, 3]
-        #     vv_b.zz = h_12[2, 3]
-        #     return vv_b
-        # raise RuntimeError("wrong config mode")
 
     def robot2world_v_all(self, v_all: Coord_all, position: Position) -> Coord_all:
 
@@ -435,72 +231,3 @@ class RobotCalc_pygeos:
         p16 = v5_point + (-normalVec_3 - normalVec_4) * self.config.link_width / 2
         points = (p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16)
         return points
-
-
-class Coord_trans:
-    @staticmethod
-    def mat_rotx(alpha):
-        mat = np.array(
-            [
-                [1, 0, 0, 0],
-                [0, np.cos(alpha), -np.sin(alpha), 0],
-                [0, np.sin(alpha), np.cos(alpha), 0],
-                [0, 0, 0, 1],
-            ]
-        )
-        return mat
-
-    @staticmethod
-    def mat_roty(beta):
-        mat = np.array(
-            [
-                [np.cos(beta), 0, np.sin(beta), 0],
-                [0, 1, 0, 0],
-                [-np.sin(beta), 0, np.cos(beta), 0],
-                [0, 0, 0, 1],
-            ]
-        )
-        return mat
-
-    @staticmethod
-    def mat_rotz(theta):
-        mat = np.array(
-            [
-                [np.cos(theta), -np.sin(theta), 0, 0],
-                [np.sin(theta), np.cos(theta), 0, 0],
-                [0, 0, 1, 0],
-                [0, 0, 0, 1],
-            ]
-        )
-        return mat
-
-    @staticmethod
-    def mat_transl(transl_list: list):
-        mat = np.array(
-            [[1, 0, 0, transl_list[0]], [0, 1, 0, transl_list[1]], [0, 0, 1, transl_list[2]], [0, 0, 0, 1]]
-        )
-        return mat
-
-
-class EulerAngle:
-    @staticmethod
-    def trans2zyx(trans) -> List:
-        if np.sqrt(trans[0, 0] ** 2 + trans[1, 0] ** 2) == 0 and -trans[2, 0] == 1:
-            b = np.pi / 2
-            a = 0
-            r = np.atan2(trans[0, 1], trans[1, 1])
-        elif np.sqrt(trans[0, 0] ** 2 + trans[1, 0] ** 2) == 0 and -trans[2, 0] == -1:
-            b = -np.pi / 2
-            a = 0
-            r = -np.atan2(trans[0, 1], trans[1, 1])
-        else:
-            b = np.atan2(-trans[2, 0], np.sqrt(trans[0, 0] ** 2 + trans[1, 0] ** 2))
-            cb = np.cos(b)
-            a = np.atan2(trans[1, 0] / cb, trans[0, 0] / cb)
-            r = np.atan2(trans[2, 1] / cb, trans[2, 2] / cb)
-        return [a, b, r]
-
-    @staticmethod
-    def zyx2trans(alpha, beta, gamma) -> np.ndarray:
-        ct = Coord_trans
-        return ct.mat_rotz(alpha) @ ct.mat_roty(beta) @ ct.mat_rotx(gamma)

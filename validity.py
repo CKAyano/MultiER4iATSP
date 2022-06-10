@@ -10,7 +10,7 @@ from robotCalc_pygeos import RobotCalc_pygeos
 import Geometry3Dmaster.Geometry3D as gm
 from pathlib import Path
 from typing import List, Optional
-from robotInfo import Coord, Position, Robot, Config
+from robot_configuration import Coord, Position, Robot, Config
 from status_logging import Collision_status
 import os
 import imageio

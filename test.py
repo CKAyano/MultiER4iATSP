@@ -2,7 +2,7 @@ from chromoCalcV3 import Trajectory
 from robotCalc_pygeos import RobotCalc_pygeos
 import numpy as np
 
-from robotInfo import Config, Coord
+from robot_configuration import Config, Coord
 
 
 def main() -> None:

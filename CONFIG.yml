@@ -1,3 +1,5 @@
+robot_name: "fanuc"
+
 robots_count: 2
 
 # interp_mode: "max_deg", "poly_traj"
