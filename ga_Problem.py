@@ -4,7 +4,7 @@ import geatpy as ea
 from status_logging import Collision_status
 import datetime
 import yaml
-from robotInfo import Config
+from robot_configuration import Config
 from pathlib import Path
 
 

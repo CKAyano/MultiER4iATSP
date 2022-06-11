@@ -1,16 +1,12 @@
 from argparse import ArgumentError
-from email import header
 from enum import Enum, auto
-from operator import delitem
-from statistics import mean, stdev
 import numpy as np
 from chromoCalcV3 import ChromoCalcV3
-import robotCalc_Geo3D as rcg
 from robotCalc_pygeos import RobotCalc_pygeos
 import Geometry3Dmaster.Geometry3D as gm
 from pathlib import Path
 from typing import List, Optional
-from robotInfo import Coord, Position, Robot, Config
+from robot_configuration import Coord, Position, Robot, Config
 from status_logging import Collision_status
 import os
 import imageio
@@ -19,8 +15,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import datetime
 import tkinter as tk
-from PIL import Image, ImageTk
-from tkinter import ttk, filedialog
+from tkinter import ttk
 import tkfilebrowser as tkf
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -39,108 +34,99 @@ class DrawRobots:
         # self.ccv3 = ChromoCalcV3(self.config, self.points, 0, 1)
         self.datetime_now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
 
-    def cph(self, point):
-        point1 = gm.geometry.Point(point[0][0], point[0][1], point[0][2])
-        point2 = gm.geometry.Point(point[1][0], point[1][1], point[1][2])
-        point3 = gm.geometry.Point(point[2][0], point[2][1], point[2][2])
-        point4 = gm.geometry.Point(point[3][0], point[3][1], point[3][2])
-        point5 = gm.geometry.Point(point[4][0], point[4][1], point[4][2])
-        point6 = gm.geometry.Point(point[5][0], point[5][1], point[5][2])
-        point7 = gm.geometry.Point(point[6][0], point[6][1], point[6][2])
-        point8 = gm.geometry.Point(point[7][0], point[7][1], point[7][2])
-        point9 = gm.geometry.Point(point[8][0], point[8][1], point[8][2])
-        point10 = gm.geometry.Point(point[9][0], point[9][1], point[9][2])
-        point11 = gm.geometry.Point(point[10][0], point[10][1], point[10][2])
-        point12 = gm.geometry.Point(point[11][0], point[11][1], point[11][2])
-        point13 = gm.geometry.Point(point[12][0], point[12][1], point[12][2])
-        point14 = gm.geometry.Point(point[13][0], point[13][1], point[13][2])
-        point15 = gm.geometry.Point(point[14][0], point[14][1], point[14][2])
-        point16 = gm.geometry.Point(point[15][0], point[15][1], point[15][2])
+    def cph(self, points):
+        point1 = gm.geometry.Point(points[0][0], points[0][1], points[0][2])
+        point2 = gm.geometry.Point(points[1][0], points[1][1], points[1][2])
+        point3 = gm.geometry.Point(points[2][0], points[2][1], points[2][2])
+        point4 = gm.geometry.Point(points[3][0], points[3][1], points[3][2])
+        point5 = gm.geometry.Point(points[4][0], points[4][1], points[4][2])
+        point6 = gm.geometry.Point(points[5][0], points[5][1], points[5][2])
+        point7 = gm.geometry.Point(points[6][0], points[6][1], points[6][2])
+        point8 = gm.geometry.Point(points[7][0], points[7][1], points[7][2])
         cpg1 = gm.geometry.ConvexPolygon((point1, point2, point3, point4))
         cpg2 = gm.geometry.ConvexPolygon((point1, point2, point6, point5))
         cpg3 = gm.geometry.ConvexPolygon((point4, point3, point7, point8))
         cpg4 = gm.geometry.ConvexPolygon((point2, point3, point7, point6))
         cpg5 = gm.geometry.ConvexPolygon((point1, point4, point8, point5))
         cpg6 = gm.geometry.ConvexPolygon((point5, point6, point7, point8))
-        cpg7 = gm.geometry.ConvexPolygon((point9, point10, point11, point12))
-        cpg8 = gm.geometry.ConvexPolygon((point9, point10, point14, point13))
-        cpg9 = gm.geometry.ConvexPolygon((point12, point11, point15, point16))
-        cpg10 = gm.geometry.ConvexPolygon((point10, point11, point15, point14))
-        cpg11 = gm.geometry.ConvexPolygon((point9, point12, point16, point13))
-        cpg12 = gm.geometry.ConvexPolygon((point13, point14, point15, point16))
-        cph1 = gm.geometry.ConvexPolyhedron((cpg1, cpg2, cpg3, cpg4, cpg5, cpg6))
-        cph2 = gm.geometry.ConvexPolyhedron((cpg7, cpg8, cpg9, cpg10, cpg11, cpg12))
-        return cph1, cph2
+        return gm.geometry.ConvexPolyhedron((cpg1, cpg2, cpg3, cpg4, cpg5, cpg6))
+
+    def _get_robot_cph(self, q, robot):
+        link_count = len(self.rc.robot_kine.collision_links)
+        va_all = self.rc.userFK(q)
+        va_all = self.rc.robot2world_v_all(va_all, robot.position)
+        cph_all = tuple()
+        for i in range(link_count):
+            v_f = va_all.__dict__.get(self.rc.robot_kine.collision_links[i][0])
+            v_e = va_all.__dict__.get(self.rc.robot_kine.collision_links[i][1])
+            points = self.rc._get_link_points_by_joints_position(q, v_f, v_e)
+            cph = self.cph(points)
+            cph_all += (cph,)
+        return cph_all
 
     def _cph_vs_seg_robots(self, q_best, int_point):
         ccv3 = ChromoCalcV3(self.config, self.points, 0, 1, [])
         cphs = []
-        # for rb in range(self.config.robots_count):
-        points = self.rc.get_link_points(q_best[0][int_point, :], ccv3.robots[0])
-        cph1, cph2 = self.cph(points)
-
+        link_count = len(self.rc.robot_kine.collision_links)
+        va_all = self.rc.userFK(q_best[0][int_point, :])
+        va_all = self.rc.robot2world_v_all(va_all, ccv3.robots[0].position)
         vb_all = self.rc.userFK(q_best[1][int_point, :])
         vb_all = self.rc.robot2world_v_all(vb_all, ccv3.robots[1].position)
+        cphs_all = tuple()
+        segs_all = tuple()
+        for i in range(link_count):
+            va_f = va_all.__dict__.get(self.rc.robot_kine.collision_links[i][0])
+            va_e = va_all.__dict__.get(self.rc.robot_kine.collision_links[i][1])
+            vb_f = vb_all.__dict__.get(self.rc.robot_kine.collision_links[i][0])
+            vb_e = vb_all.__dict__.get(self.rc.robot_kine.collision_links[i][1])
+            points = self.rc._get_link_points_by_joints_position(q_best[0][int_point, :], va_f, va_e)
+            vb_points_f = gm.geometry.Point(vb_f.xx, vb_f.yy, vb_f.zz)
+            vb_points_e = gm.geometry.Point(vb_e.xx, vb_e.yy, vb_e.zz)
+            gm_seg = gm.geometry.Segment(vb_points_f, vb_points_e)
+            cph = self.cph(points)
+            cphs_all += (cph,)
+            segs_all += (gm_seg,)
 
-        gm_vb1 = gm.geometry.Point(vb_all.v2.xx, vb_all.v2.yy, vb_all.v2.zz)
-        gm_vb3 = gm.geometry.Point(vb_all.v4.xx, vb_all.v4.yy, vb_all.v4.zz)
-        gm_vb4 = gm.geometry.Point(vb_all.v5.xx, vb_all.v5.yy, vb_all.v5.zz)
-
-        gmSegB1 = gm.geometry.Segment(gm_vb1, gm_vb3)
-        gmSegB2 = gm.geometry.Segment(gm_vb3, gm_vb4)
-        # cphs.append(_cph)
-        return cph1, cph2, gmSegB1, gmSegB2
+        return cphs_all, segs_all
 
     def cph_robots(self, q_best: List[np.ndarray], intPoint) -> bool:
         ccv3 = ChromoCalcV3(self.config, self.points, 0, 1, [])
-        cphs = []
+        cphs_rb_all = []
         for rb in range(self.config.robots_count):
-            points = self.rc.get_link_points(q_best[rb][intPoint, :], ccv3.robots[rb])
-            _cph = self.cph(points)
-            cphs.append(_cph)
-        return cphs
+            # points = self.rc.get_robot_polygons(q_best[rb][intPoint, :], ccv3.robots[rb])
+            cph_rb = self._get_robot_cph(q_best[rb][intPoint, :], ccv3.robots[rb])
+            cphs_rb_all.append(cph_rb)
+        return cphs_rb_all
 
     def _draw_cph_vs_seg(
         self, q_best: List[np.ndarray], intPoint, save_path: Optional[str] = None, axis=None, is_show=True
     ):
-        cphs = self._cph_vs_seg_robots(q_best, intPoint)
+        cphs, segs = self._cph_vs_seg_robots(q_best, intPoint)
 
-        inter1 = gm.calc.intersection(cphs[0], cphs[2])
-        inter2 = gm.calc.intersection(cphs[0], cphs[3])
-        inter3 = gm.calc.intersection(cphs[1], cphs[2])
-        inter4 = gm.calc.intersection(cphs[1], cphs[3])
+        inters = []
+        for cph in cphs:
+            for seg in segs:
+                int = gm.calc.intersection(cph, seg)
+                inters.append(int)
 
-        strInter1 = str(inter1)
-        strInter2 = str(inter2)
-        strInter3 = str(inter3)
-        strInter4 = str(inter4)
+        inters_str = [str(int) for int in inters]
 
         r = gm.render.Renderer()
 
         # for rb in range(self.config.robots_count):
-        r.add((cphs[0], self.robots_color[0], 2), normal_length=0)
-        r.add((cphs[1], self.robots_color[0], 2), normal_length=0)
-
-        r.add((cphs[2], self.robots_color[1], 2), normal_length=0)
-        r.add((cphs[3], self.robots_color[1], 2), normal_length=0)
+        for cph in cphs:
+            r.add((cph, self.robots_color[0], 2), normal_length=0)
+        # r.add((cphs[1], self.robots_color[0], 2), normal_length=0)
+        for seg in segs:
+            r.add((seg, self.robots_color[1], 2), normal_length=0)
+        # r.add((cphs[3], self.robots_color[1], 2), normal_length=0)
 
         color_inter = "darkorange"
-        if strInter1 == "None":
-            pass
-        else:
-            r.add((inter1, color_inter, 8), normal_length=0)
-        if strInter2 == "None":
-            pass
-        else:
-            r.add((inter2, color_inter, 8), normal_length=0)
-        if strInter3 == "None":
-            pass
-        else:
-            r.add((inter3, color_inter, 8), normal_length=0)
-        if strInter4 == "None":
-            pass
-        else:
-            r.add((inter4, color_inter, 5), normal_length=0)
+        for i, int_str in enumerate(inters_str):
+            if int_str == "None":
+                pass
+            else:
+                r.add((inters[i], color_inter, 8), normal_length=0)
 
         if is_show:
             r.show(axis=axis, dpi=200)
@@ -148,12 +134,13 @@ class DrawRobots:
             r.savefigure(save_path, axis)
 
     def draw(self, q_best: List[np.ndarray], intPoint, save_path=None, axis=None, is_show=True):
-        cphs = self.cph_robots(q_best, intPoint)
+        cphs_rb_all = self.cph_robots(q_best, intPoint)
         r = gm.render.Renderer()
 
-        for rb in range(self.config.robots_count):
-            r.add((cphs[rb][0], self.robots_color[rb], 1), normal_length=0)
-            r.add((cphs[rb][1], self.robots_color[rb], 1), normal_length=0)
+        for i, cph_rb in enumerate(cphs_rb_all):
+            for cph in cph_rb:
+                r.add((cph, self.robots_color[i], 3), normal_length=0)
+            # r.add((cphs[rb][1], self.robots_color[rb], 3), normal_length=0)
         if is_show:
             r.show(dpi=200, axis=axis)
         if save_path:
@@ -456,9 +443,9 @@ class IndexComparision:
         return folder_list
 
     def main_distribution_metric(method: DMType, *folders_paths, un):
-        # noRep_path = "./[Result]/noRep_10000Gen_noSlice"
-        # repRandom_path = "./[Result]/rep_10000Gen_noSlice"
-        # repReverse_path = "./[Result]/mode_reverse"
+        # noRep_path = "./all_results/noRep_10000Gen_noSlice"
+        # repRandom_path = "./all_results/rep_10000Gen_noSlice"
+        # repReverse_path = "./all_results/mode_reverse"
 
         folders_lists = []
         for path in folders_paths:
@@ -510,7 +497,7 @@ class IndexComparision:
         folder_other_list = os.listdir(folder_other_path)
         folder_other_list = IndexComparision._remove_private_folder_from_list(folder_other_list)
         datetime_now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-        path_output = f"./[Result]/c_measurement/{datetime_now}"
+        path_output = f"./all_results/c_measurement/{datetime_now}"
         Path(f"{path_output}/figure").mkdir(parents=True, exist_ok=True)
 
         win_self_count = 0
@@ -553,7 +540,7 @@ class IndexComparision:
         method_list = [DMType.SP, DMType.OS, DMType.DM]
         sheet_name = ["SP", "OS", "DM"]
         writer = pd.ExcelWriter(
-            f"./[Result]/metrics_compare/{datetime.datetime.now().strftime('%y%m%d-%H%M%S')}.xlsx",
+            f"./all_results/metrics_compare/{datetime.datetime.now().strftime('%y%m%d-%H%M%S')}.xlsx",
             engine="xlsxwriter",
         )
         for i, md in enumerate(method_list):
@@ -640,8 +627,8 @@ class ResultAnalyzeApp:
 
 class Single_Robot:
     def save_pareto() -> None:
-        objv_path_1 = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909"
-        objv_path_2 = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220316-114439"
+        objv_path_1 = "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909"
+        objv_path_2 = "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220316-114439"
         if os.path.exists(objv_path_1):
             objv_1 = np.genfromtxt(f"{objv_path_1}/ObjV.csv", delimiter=",")
             objv_2 = np.genfromtxt(f"{objv_path_2}/ObjV.csv", delimiter=",")
@@ -664,9 +651,9 @@ class Single_Robot:
                 file.write("No solution")
 
     def first_sol_export():
-        config = Config("./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/config.yml")
-        chromo_path = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/Chrom.csv"
-        points_path = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/output_point.csv"
+        config = Config("./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/config.yml")
+        chromo_path = "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/Chrom.csv"
+        points_path = "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/output_point.csv"
         chromo = np.genfromtxt(chromo_path, delimiter=",", dtype="int32")
         points = np.genfromtxt(points_path, delimiter=",")
         first_sol = chromo[0, :]
@@ -682,20 +669,20 @@ class Single_Robot:
             q_best = np.vstack((q_best, q_2_best))
             q_1_best = q_2_best
         np.savetxt(
-            "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/best_joints.csv",
+            "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/best_joints.csv",
             q_best,
             delimiter=",",
         )
         np.savetxt(
-            "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/points_first_sol.csv",
+            "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/points_first_sol.csv",
             points_first_sol,
             delimiter=",",
         )
 
     def ik_list():
-        config = Config("./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/config.yml")
+        config = Config("./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/config.yml")
         rc = RobotCalc_pygeos(config)
-        points_path = "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/output_point.csv"
+        points_path = "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/output_point.csv"
         points = np.genfromtxt(points_path, delimiter=",")
         rb = Robot(0, Position.LEFT)
         first_three_idx = [0, 2, 4, 6]
@@ -709,22 +696,22 @@ class Single_Robot:
             id_pt_ik = np.hstack((id_pt_array, vv_ik_first_three))
             ik_all = np.vstack((ik_all, id_pt_ik))
         np.savetxt(
-            "./[Result]/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/points_all_ik.csv",
+            "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909/points_all_ik.csv",
             ik_all,
             delimiter=",",
         )
 
 
 def index_test():
-    f_1 = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming10/poly_traj"
-    f_2 = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming20/poly_traj"
-    f_3 = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming30/poly_traj"
-    f_4 = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming40/poly_traj"
-    f_5 = "./[Result]/Robot_2/points_count100/noStep/Gen10000/no_replace/poly_traj"
+    f_1 = "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming10/poly_traj"
+    f_2 = "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming20/poly_traj"
+    f_3 = "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming30/poly_traj"
+    f_4 = "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming40/poly_traj"
+    f_5 = "./all_results/Robot_2/points_count100/noStep/Gen10000/no_replace/poly_traj"
     un = IndexComparision._find_utopia_nadir(f_1, f_2, f_3, f_4, f_5)
 
-    folder_self_path = "./[Result]/Robot_2/points_count100/noStep/Gen10000/no_replace/poly_traj"
-    folder_other_path = "./[Result]/Robot_2/points_count100/noStep/Gen10000/replace/Hamming40/poly_traj"
+    folder_self_path = "./all_results/Robot_2/points_count100/noStep/Gen10000/no_replace/poly_traj"
+    folder_other_path = "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming30/poly_traj"
     res_c = IndexComparision.main_cIndex(folder_self_path, folder_other_path)
     res_dm = IndexComparision.main_distribution_metric(DMType.DM, folder_self_path, folder_other_path, un=un)
     print(res_c[1])
@@ -733,57 +720,72 @@ def index_test():
 
 
 def draw_figure():
-    dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226")
+    # dr = DrawRobots("./all_results/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226")
+    # dr = DrawRobots(
+    #     "./all_results/Robot_2/points_count25/noStep/Gen10000/random/Hamming5/poly_traj/220513-211237"
+    # )
+    # dr = DrawRobots(
+    #     "./all_results/Robot_2/points_count50/noStep/Gen10000/random/Hamming10/poly_traj/220513-110428"
+    # )
+    # dr = DrawRobots("./all_results/Robot_2/noStep/Gen10000/random/Hamming20/poly_traj/220421-180516")
+    # dr = DrawRobots("./all_results/Robot_2/noStep/Gen10000/no_replace/poly_traj/220419-203253")
     dr = DrawRobots(
-        "./[Result]/Robot_2/points_count25/noStep/Gen10000/random/Hamming5/poly_traj/220513-211237"
+        "./all_results/Robot_4/points_count100/noStep/Gen5000/replace/Hamming20/poly_traj/220606-150353"
     )
-    dr = DrawRobots(
-        "./[Result]/Robot_2/points_count50/noStep/Gen10000/random/Hamming10/poly_traj/220513-110428"
-    )
-    dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/random/Hamming20/poly_traj/220421-180516")
-    dr = DrawRobots("./[Result]/Robot_2/noStep/Gen10000/no_replace/poly_traj/220419-203253")
-    dr.draw_manuf_route(is_connect=True)
+    # dr.draw_manuf_route(is_connect=True)
     dr.draw_pareto()
 
 
 def draw_robot():
-    dr = DrawRobots("./[Result]/Robot_4/noStep/Gen10000/random/Hamming30/220312-151028")
+    # dr = DrawRobots("./all_results/Robot_4/noStep/Gen10000/random/Hamming30/220312-151028")
+    dr = DrawRobots(
+        "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming10/poly_traj/220522-085023"
+    )
 
-    q_best_1 = np.radians(np.array([[0, 10, -10, 0, -90, 0]]))
-    q_best_2 = np.radians(np.array([[0, 10, -10, 0, -90, 0]]))
-    q_best_3 = np.radians(np.array([[0, 10, -10, 0, -90, 0]]))
-    q_best_4 = np.radians(np.array([[0, 10, -10, 0, -90, 0]]))
+    q_best_1 = np.radians(np.array([[10, 10, -20, 0, 0, 0]]))
+    q_best_2 = np.radians(np.array([[20, 20, -30, 0, 0, 0]]))
+    q_best_3 = np.radians(np.array([[30, 30, -40, 0, 0, 0]]))
+    q_best_4 = np.radians(np.array([[40, 40, -50, 0, 0, 0]]))
 
-    dr.draw([q_best_1, q_best_2, q_best_3, q_best_4], 0, axis=[[-100, 1000], [-550, 550], [-350, 350]])
+    # dr.draw([q_best_1, q_best_2, q_best_3, q_best_4], 0, axis=[[-100, 1000], [-550, 550], [-350, 350]])
+    dr.draw([q_best_1, q_best_2], 0, axis=[[-100, 1000], [-550, 550], [-350, 350]])
 
 
-if __name__ == "__main__":
-    # dr.config.baseX_offset -= 200
+def draw_robot_polygons_vs_segs():
+    dr = DrawRobots(
+        "./all_results/Robot_2/points_count100/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226"
+    )
+    dr.config.baseX_offset -= 200
     # q_best_1 = np.radians(np.array([[0, 60, -20, 0, -90, 0]]))
     # q_best_2 = np.radians(np.array([[0, 60, -20, 0, -90, 0]]))
     # q_best_1 = np.radians(np.array([[0, 0, 0, 0, -90, 0]]))
     # q_best_2 = np.radians(np.array([[0, 0, 0, 0, -90, 0]]))
-    # q_best_1 = np.radians(np.array([[-20, 60, -20, 0, -90, 0]]))
-    # q_best_2 = np.radians(np.array([[-20, 60, -20, 0, -90, 0]]))
+    q_best_1 = np.radians(np.array([[-20, 60, -20, 0, -90, 0]]))
+    q_best_2 = np.radians(np.array([[-20, 60, -20, 0, -90, 0]]))
 
-    # dr._draw_cph_vs_seg([q_best_1, q_best_2], 0, "1", axis=[[0, 700], [-350, 350], [-350, 350]])
+    dr._draw_cph_vs_seg([q_best_1, q_best_2], 0, "1", axis=[[0, 700], [-350, 350], [-350, 350]])
+
+
+if __name__ == "__main__":
+
     # try:
     #     dr.chrom_to_png(axis=[[0, 900], [-450, 450], [-450, 450]])
     # except Exception:
     #     pass
 
-    # config = Config("./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/CONFIG.yml")
+    # config = Config("./all_results/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/CONFIG.yml")
     # points = np.genfromtxt(
-    #     "./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/output_point.csv", delimiter=","
+    #     "./all_results/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/output_point.csv",
+    #     delimiter=","
     # )
     # ccv3 = ChromoCalcV3(config, points, 0, 1, [])
     # chrom = np.genfromtxt(
-    #     f"./[Result]/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/Chrom.csv",
+    #     f"./all_results/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/Chrom.csv",
     #     delimiter=",",
     #     dtype="int32",
     # )
     # test = ccv3.interpolation_step(chrom[3, :])
     # print()
-
+    # draw_figure()
     # index_test()
     draw_robot()

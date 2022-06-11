@@ -2,7 +2,7 @@ from argparse import ArgumentError
 from matplotlib import pyplot as plt
 import numpy as np
 from robotCalc_pygeos import RobotCalc_pygeos, Coord
-from robotInfo import Config, Robot, Position
+from robot_configuration import Config, Robot, Position
 from typing import List, Tuple, Optional
 
 
