@@ -1,9 +1,9 @@
-from typing import List
 import numpy as np
 import pygeos.creation as pgc
 import pygeos.set_operations as pgi
 import warnings
-from robot_configuration import Position, Robot, Coord, Coord_all, Config, FanucKinematics, angleAdj
+from robot_configuration import Position, Robot, Coord, Coord_all, Config, angleAdj
+from robot_configuration import FanucKinematics, PumaKinematics
 
 
 class RobotCalc_pygeos:
@@ -13,6 +13,7 @@ class RobotCalc_pygeos:
             self.direction = self.config.zyx_euler
         elif "direct_array" in self.config.__dict__ and "zyx_euler" not in self.config.__dict__:
             # !! 此方向表示方法以第三軸座標方向當基準，不適合用於所有機械手臂
+            # !! 只用於舊FANUC CONFIG.yml
             self.direction = self.config.direct_array
             print("-------- config: direct_array --------")
         else:
@@ -20,6 +21,8 @@ class RobotCalc_pygeos:
 
         if config.robot_name == "fanuc":
             self.robot_kine = FanucKinematics()
+        if config.robot_name == "puma":
+            self.robot_kine = PumaKinematics()
 
         test_links = np.array(self.robot_kine.collision_links, dtype=str)
         if test_links.ndim == 1:
@@ -152,7 +155,6 @@ class RobotCalc_pygeos:
             for seg in segments:
                 inter = pgi.intersection(seg, polygons)
                 inter_all.append(inter)
-            # inter2 = pgi.intersection(gmSegB2, polygons)
         except RuntimeWarning:
             warnings.simplefilter("ignore")
             return True
@@ -172,13 +174,19 @@ class RobotCalc_pygeos:
         for i in range(link_count):
             v_f = v_all.__dict__.get(self.robot_kine.collision_links[i][0])
             v_e = v_all.__dict__.get(self.robot_kine.collision_links[i][1])
+            if v_f is None or v_e is None:
+                raise TypeError(
+                    "setting wrong links for collision detection"
+                    + "(change collision_links in robot_configuraion.py)"
+                )
             points = self._get_link_points_by_joints_position(q, v_f, v_e)
             rings = self._get_link_rings(points)
             rings_all += rings
         cpg_all = pgc.polygons(list(rings_all))
         return cpg_all
 
-    def _get_link_rings(self, points):
+    @staticmethod
+    def _get_link_rings(points):
         ring1 = pgc.linearrings([points[0], points[1], points[2], points[3]])
         ring2 = pgc.linearrings([points[0], points[1], points[5], points[4]])
         ring3 = pgc.linearrings([points[3], points[2], points[6], points[7]])
