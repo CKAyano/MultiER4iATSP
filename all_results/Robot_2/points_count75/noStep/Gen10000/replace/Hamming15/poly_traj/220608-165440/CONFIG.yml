@@ -1,0 +1,72 @@
+robots_count: 2
+
+# interp_mode: "max_deg", "poly_traj"
+interp_mode: "poly_traj"
+
+interp_step_period: 0.05
+
+mean_motion_velocity_deg: 100
+
+is_hamming_crowding:
+  - True
+  - 15
+  - "replace"  # "random", "replace"
+
+is_recombine_init_chromo: True
+
+custom_initChrom: True
+
+points_range:
+  -
+    - 100
+    - 800
+  -
+    - -300
+    - 300
+  -
+    - 50
+    - 50
+
+link_width: 200
+
+org_pos:
+  - 90
+  - 45
+  - 0
+  - 0
+  - 90
+  - 0
+
+joints_range:
+  -
+    - -170
+    - 170
+  -
+    - -110
+    - 120
+  -
+    - -80 # -(J2+J3)
+    - 260
+  -
+    - -190
+    - 190
+  -
+    - -120
+    - 120
+  -
+    - -360
+    - 360
+
+direct_array:
+  -
+    - 0
+    - 0
+    - -1
+  -
+    - 0
+    - 1
+    - 0
+  -
+    - 1
+    - 0
+    - 0
