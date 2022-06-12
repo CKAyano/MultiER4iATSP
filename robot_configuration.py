@@ -49,6 +49,31 @@ class Coord_all:
     v5: Optional[Coord] = None
     v6: Optional[Coord] = None
 
+    @property
+    def end_effector(self):
+        return [v for v in self.__dict__.values() if v is not None][-1]
+
+    def set_new_value_by_str_of_key(self, v: str, new_value):
+        if v == "v1":
+            self.v1 = new_value
+            return
+        if v == "v2":
+            self.v2 = new_value
+            return
+        if v == "v3":
+            self.v3 = new_value
+            return
+        if v == "v4":
+            self.v4 = new_value
+            return
+        if v == "v5":
+            self.v5 = new_value
+            return
+        if v == "v6":
+            self.v6 = new_value
+            return
+        raise TypeError("assign wrong string")
+
 
 class Position(Enum):
     LEFT = auto()

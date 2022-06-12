@@ -78,15 +78,11 @@ class RobotCalc_pygeos:
         return vv_b
 
     def robot2world_v_all(self, v_all: Coord_all, position: Position) -> Coord_all:
-
-        v1 = self.robot2world(v_all.v1, position)
-        v2 = self.robot2world(v_all.v2, position)
-        v3 = self.robot2world(v_all.v3, position)
-        v4 = self.robot2world(v_all.v4, position)
-        v5 = self.robot2world(v_all.v5, position)
-
-        v_all = Coord_all(v1, v2, v3, v4, v5)
-
+        for k, v in v_all.__dict__.items():
+            if v is None:
+                break
+            new_v = self.robot2world(v, position)
+            v_all.set_new_value_by_str_of_key(k, new_v)
         return v_all
 
     def coord2bestAngle(self, vv: Coord, q_1_best, robot: Robot) -> np.ndarray:
