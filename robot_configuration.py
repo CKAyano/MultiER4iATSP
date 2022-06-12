@@ -1,9 +1,8 @@
 from dataclasses import dataclass
-from typing import Callable, Optional, List, Tuple
+from typing import Optional, List
 import numpy as np
 from enum import Enum, auto
 import yaml
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
 
@@ -139,7 +138,7 @@ class Config:
         self.points_range = config["points_range"]
         self.link_width = config["link_width"]
         self.org_pos = np.radians(np.array(config["org_pos"]))
-        self.joints_range = np.radians(np.array(config["joints_range"]))
+        # self.joints_range = np.radians(np.array(config["joints_range"]))
         if "direct_array" in config:
             self.direct_array = np.array(config["direct_array"])
         if "zyx_euler" in config:
@@ -152,6 +151,15 @@ class RobotKinematics(ABC):
     @property
     @abstractmethod
     def collision_links(self) -> List[List]:
+        pass
+
+    @property
+    @abstractmethod
+    def joints_range_deg(self) -> List[List]:
+        pass
+
+    @abstractmethod
+    def range_joints_relative_to_absolute(self, joint_angles: np.ndarray) -> Optional[np.ndarray]:
         pass
 
     @abstractmethod
@@ -170,6 +178,12 @@ class FanucKinematics(RobotKinematics):
     d_4 = 290
 
     collision_links = [["v2", "v4"], ["v4", "v5"]]
+
+    joints_range_deg = [[-170, 170], [-110, 120], [-80, 260], [-190, 190], [-120, 120], [-360, 360]]
+
+    def range_joints_relative_to_absolute(self, joint_angles: np.ndarray) -> np.ndarray:
+        joint_angles[:, 2] = -(joint_angles[:, 2] + joint_angles[:, 1])
+        return joint_angles
 
     def forward_kines(self, q: np.ndarray) -> Coord_all:
         try:
@@ -361,8 +375,19 @@ class FanucKinematics(RobotKinematics):
 
 
 class PumaKinematics(RobotKinematics):
+
+    collision_links = [["v2", "v4"], ["v4", "v5"]]  # todo
+
+    joints_range_deg = [[-170, 170], [-110, 120], [-80, 260], [-190, 190], [-120, 120], [-360, 360]]  # todo
+
+    def range_joints_relative_to_absolute(self, joint_angles: np.ndarray) -> Optional[np.ndarray]:
+        return super().range_joints_relative_to_absolute(joint_angles)
+
     def forward_kines(self, q: np.ndarray) -> Coord_all:
-        return super().forward_kines(q)
+        pass
+
+    def inverse_kines(self, vv: Coord, zyx_euler: np.ndarray) -> np.ndarray:
+        pass
 
 
 class Coord_trans:

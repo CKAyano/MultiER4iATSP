@@ -116,16 +116,23 @@ class RobotCalc_pygeos:
         q_best_cp = q_best.copy()
         if q_best_cp.ndim == 1:
             q_best_cp = q_best_cp[None, :]
-        joints_range = self.config.joints_range
-        numOfAxis = joints_range.shape[0]
+        # joints_range = self.config.joints_range
+        joints_range = np.radians(np.array(self.robot_kine.joints_range_deg))
+        joints_count = joints_range.shape[0]
+        if q_best_cp.shape[1] != joints_count:
+            raise TypeError("length of q_best is incorrect")
         isQNan = np.isnan(q_best_cp)
         if np.any(isQNan):
             return True
         else:
-            q_best_cp[:, 2] = -(q_best_cp[:, 2] + q_best_cp[:, 1])
+            q_best_cp_2 = q_best_cp.copy()
+            q_best_cp_2 = self.robot_kine.range_joints_relative_to_absolute(q_best_cp_2)
+            if q_best_cp_2 is not None:
+                q_best_cp = q_best_cp_2
+            # q_best_cp[:, 2] = -(q_best_cp[:, 2] + q_best_cp[:, 1])
             for i in range(q_best_cp.shape[0]):
                 q_best_cp[i, :] = angleAdj(q_best_cp[i, :])
-            for i in range(numOfAxis):
+            for i in range(joints_count):
                 condition_ql = q_best_cp[:, i] < joints_range[i, 0]
                 condition_qu = q_best_cp[:, i] > joints_range[i, 1]
                 if np.any(condition_ql) or np.any(condition_qu):
