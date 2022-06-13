@@ -401,9 +401,9 @@ class PumaKinematics(RobotKinematics):
     d_3 = 149.09
     d_4 = 433.07
 
-    collision_links = [["v2", "v4"], ["v4", "v5"]]  # todo
+    collision_links = [["v2", "v3"], ["v3", "v4"]]
 
-    joints_range_deg = [[-170, 170], [-110, 120], [-80, 260], [-190, 190], [-120, 120], [-360, 360]]  # todo
+    joints_range_deg = [[-160, 160], [-225, 45], [-225, 45], [-140, 140], [-100, 100], [-266, 266]]
 
     def range_joints_relative_to_absolute(self, joint_angles: np.ndarray) -> Optional[np.ndarray]:
         return super().range_joints_relative_to_absolute(joint_angles)
@@ -522,18 +522,6 @@ class PumaKinematics(RobotKinematics):
         q_first_half = np.vstack((group_1, group_2, group_3, group_4))
         q_all = self._joint_three2six_from_first_joint(q_first_half, zyx_euler)
         return q_all
-
-        # r_ax = end_mat[0, 2]
-        # r_ay = end_mat[1, 2]
-        # r_az = end_mat[2, 2]
-        # q4 = np.zeros(2)
-        # for q in q_first_half:
-        #     q4 = np.arctan2(
-        #         -r_ax * np.sin(q[0]) + r_ay * np.cos(q[0]),
-        #         -r_ax * np.cos(q[0]) * np.cos(q[1] + q[2])
-        #         - r_ay * np.sin(q[0]) * np.cos(q[1] + q[2])
-        #         + r_az * np.sin(q[1] + q[2]),
-        #     )
 
     def _joint_three2six_from_first_joint(self, q_array: np.ndarray, zyx_euler) -> np.ndarray:
         end_mat = EulerAngle.zyx2trans(zyx_euler[0], zyx_euler[1], zyx_euler[2])

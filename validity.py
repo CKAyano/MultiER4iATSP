@@ -703,15 +703,18 @@ class Single_Robot:
 
 
 def index_test():
-    f_1 = "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming10/poly_traj"
-    f_2 = "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming20/poly_traj"
-    f_3 = "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming30/poly_traj"
-    f_4 = "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming40/poly_traj"
-    f_5 = "./all_results/Robot_2/points_count100/noStep/Gen10000/no_replace/poly_traj"
-    un = IndexComparision._find_utopia_nadir(f_1, f_2, f_3, f_4, f_5)
+    f_1 = "./all_results/fanuc/Robot_2/points_count100/noStep/Gen10000/replace/Hamming5/poly_traj"
+    f_2 = "./all_results/fanuc/Robot_2/points_count100/noStep/Gen10000/replace/Hamming10/poly_traj"
+    f_3 = "./all_results/fanuc/Robot_2/points_count100/noStep/Gen10000/replace/Hamming20/poly_traj"
+    f_4 = "./all_results/fanuc/Robot_2/points_count100/noStep/Gen10000/replace/Hamming30/poly_traj"
+    f_5 = "./all_results/fanuc/Robot_2/points_count100/noStep/Gen10000/replace/Hamming40/poly_traj"
+    f_6 = "./all_results/fanuc/Robot_2/points_count100/noStep/Gen10000/no_replace/poly_traj"
+    un = IndexComparision._find_utopia_nadir(f_1, f_2, f_3, f_4, f_5, f_6)
 
-    folder_self_path = "./all_results/Robot_2/points_count100/noStep/Gen10000/no_replace/poly_traj"
-    folder_other_path = "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming30/poly_traj"
+    folder_self_path = "./all_results/fanuc/Robot_2/points_count100/noStep/Gen10000/no_replace/poly_traj"
+    folder_other_path = (
+        "./all_results/fanuc/Robot_2/points_count100/noStep/Gen10000/replace/Hamming30/poly_traj"
+    )
     res_c = IndexComparision.main_cIndex(folder_self_path, folder_other_path)
     res_dm = IndexComparision.main_distribution_metric(DMType.DM, folder_self_path, folder_other_path, un=un)
     print(res_c[1])
@@ -787,5 +790,5 @@ if __name__ == "__main__":
     # test = ccv3.interpolation_step(chrom[3, :])
     # print()
     # draw_figure()
-    # index_test()
-    draw_robot()
+    index_test()
+    # draw_robot()
