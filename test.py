@@ -1,6 +1,7 @@
 from chromoCalcV3 import Trajectory
 from robotCalc_pygeos import RobotCalc_pygeos
 import numpy as np
+from robot_configuration import PumaKinematics
 
 from robot_configuration import Config, Coord
 
@@ -36,6 +37,18 @@ def ik_test():
     print(ik)
 
 
+def puma_test():
+    puma = PumaKinematics()
+    # p = Coord(600, 149.09, 200)
+    # p = Coord(500, 240, 230)
+    # p = Coord(540, 210, 260)
+    # p = Coord(180, -400, 400)
+    p = Coord(-180, 400, -200)
+
+    puma._validate(p, [0, 0, -3.14159265])
+
+
 if __name__ == "__main__":
     # main()
-    ik_test()
+    # ik_test()
+    puma_test()
