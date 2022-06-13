@@ -124,7 +124,7 @@ def main() -> None:
         if step != gen_step_count - 1:
             del_result_contents()
 
-    filepath_rbcount = f"Robot_{problem.ccv3.config.robots_count}"
+    filepath_rbcount = f"{problem.ccv3.config.robot_name}/Robot_{problem.ccv3.config.robots_count}"
 
     if len(GEN_LIST) == 1:
         filepath_step = "noStep"
