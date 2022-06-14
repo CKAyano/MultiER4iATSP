@@ -535,11 +535,11 @@ class PumaKinematics(RobotKinematics):
             r_ax = end_mat[0, 2]
             r_ay = end_mat[1, 2]
             r_az = end_mat[2, 2]
-            m5 = r_ax * c1 * c23 + r_ay * s1 * c23 - r_az * s23
+            m5 = -r_ax * s23 * c1 - r_ay * s1 * s23 - r_az * c23
             q5 = [np.arccos(m5), -np.arccos(m5)]
 
-            m4_u = r_ax * s1 - r_ay * c1
-            m4_d = r_ax * c1 * s23 + r_ay * s1 * s23 + r_az * c23
+            m4_u = -r_ax * s1 + r_ay * c1
+            m4_d = -r_ax * c1 * c23 - r_ay * s1 * c23 + r_az * s23
             q4 = [
                 np.arctan2(m4_u / np.sin(q5[1]), m4_d / np.sin(q5[1])),
                 np.arctan2(m4_u / np.sin(q5[0]), m4_d / np.sin(q5[0])),
@@ -551,8 +551,9 @@ class PumaKinematics(RobotKinematics):
             r_nx = end_mat[0, 0]
             r_ny = end_mat[1, 0]
             r_nz = end_mat[2, 0]
-            m6_u = -r_ox * c1 * c23 - r_oy * s1 * c23 + r_oz * s23
-            m6_d = r_nx * c1 * c23 + r_ny * s1 * c23 - r_nz * s23
+            m6_u = r_ox * s23 * c1 + r_oy * s1 * s23 + r_oz * c23
+            m6_d = -r_nx * s23 * c1 - r_ny * s1 * s23 - r_nz * c23
+
             q6 = [
                 np.arctan2(m6_u / np.sin(q5[1]), m6_d / np.sin(q5[1])),
                 np.arctan2(m6_u / np.sin(q5[0]), m6_d / np.sin(q5[0])),
