@@ -2,6 +2,27 @@ import numpy as np
 import yaml
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import argparse
+
+
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("yes", "true", "t", "y", "1"):
+        return True
+    elif v.lower() in ("no", "false", "f", "n", "0"):
+        return False
+    else:
+        raise argparse.ArgumentTypeError("Boolean value expected.")
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(prog=".randomize_manuf_points.py", description="generate random points")
+    parser.add_argument("--nums", "-n", default="100", type=int, required=True, help="number of points")
+    parser.add_argument("--draw", "-d", default="True", type=str2bool, required=False, help="draw points?")
+    parser.add_argument("--save", "-s", default="True", type=str2bool, required=False, help="save points?")
+
+    return parser.parse_args()
 
 
 def _randomize_from_range(points_count, lb, ub):
@@ -49,7 +70,13 @@ def draw_manuf_points(points):
 
 
 if __name__ == "__main__":
-    points_counts = 100
-    points = get_random_points(points_counts)
-    draw_manuf_points(points)
-    np.savetxt("./output_point.csv")
+    args = parse_args()
+    # points_count = 100
+    points_count = args.nums
+    is_draw = args.draw
+    is_save = args.save
+    points = get_random_points(points_count)
+    if is_draw:
+        draw_manuf_points(points)
+    if is_save:
+        np.savetxt("./output_point.csv", points, delimiter=",")
