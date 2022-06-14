@@ -541,8 +541,8 @@ class PumaKinematics(RobotKinematics):
             m4_u = -r_ax * s1 + r_ay * c1
             m4_d = -r_ax * c1 * c23 - r_ay * s1 * c23 + r_az * s23
             q4 = [
-                np.arctan2(m4_u / np.sin(q5[1]), m4_d / np.sin(q5[1])),
                 np.arctan2(m4_u / np.sin(q5[0]), m4_d / np.sin(q5[0])),
+                np.arctan2(m4_u / np.sin(q5[1]), m4_d / np.sin(q5[1])),
             ]
 
             r_ox = end_mat[0, 1]
@@ -555,8 +555,8 @@ class PumaKinematics(RobotKinematics):
             m6_d = -r_nx * s23 * c1 - r_ny * s1 * s23 - r_nz * c23
 
             q6 = [
-                np.arctan2(m6_u / np.sin(q5[1]), m6_d / np.sin(q5[1])),
                 np.arctan2(m6_u / np.sin(q5[0]), m6_d / np.sin(q5[0])),
+                np.arctan2(m6_u / np.sin(q5[1]), m6_d / np.sin(q5[1])),
             ]
             q = np.array([[q[0], q[1], q[2], q4[0], q5[0], q6[0]], [q[0], q[1], q[2], q4[1], q5[1], q6[1]]])
             q_all = np.vstack((q_all, q))
