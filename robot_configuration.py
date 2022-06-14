@@ -387,8 +387,8 @@ class FanucKinematics(RobotKinematics):
             m6_u = -r_ox * c1 * c23 - r_oy * s1 * c23 + r_oz * s23
             m6_d = r_nx * c1 * c23 + r_ny * s1 * c23 - r_nz * s23
             q6 = [
-                np.arctan2(m6_u / np.sin(q5[1]), m6_d / np.sin(q5[1])),
                 np.arctan2(m6_u / np.sin(q5[0]), m6_d / np.sin(q5[0])),
+                np.arctan2(m6_u / np.sin(q5[1]), m6_d / np.sin(q5[1])),
             ]
             q = np.array([[q[0], q[1], q[2], q4[0], q5[0], q6[0]], [q[0], q[1], q[2], q4[1], q5[1], q6[1]]])
             q_all = np.vstack((q_all, q))
