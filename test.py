@@ -1,7 +1,7 @@
 from chromoCalcV3 import Trajectory
 from robotCalc_pygeos import RobotCalc_pygeos
 import numpy as np
-from robot_configuration import PumaKinematics
+from robot_configuration import PumaKinematics, FanucKinematics
 
 from robot_configuration import Config, Coord
 
@@ -23,18 +23,41 @@ def main() -> None:
 
 def ik_test():
     config = Config("./CONFIG.yml")
+    config.zyx_euler = np.array([0, 0, 0])
     rb = RobotCalc_pygeos(config)
-    p = Coord(300, 20, 0)
-    # [[   3.8141   28.0415   28.0358   -0.       33.9227  176.1859]
-    #  [   3.8141   28.0415   28.0358  180.      -33.9227   -3.8141]
-    #  [   3.8141  151.9585  159.8545   -0.      138.1869  176.1859]
-    #  [   3.8141  151.9585  159.8545  180.     -138.1869   -3.8141]
-    #  [-176.1859 -151.9585   28.0358 -180.      146.0773  176.1859]
-    #  [-176.1859 -151.9585   28.0358    0.     -146.0773   -3.8141]
-    #  [-176.1859  -28.0415  159.8545 -180.       41.8131  176.1859]
-    #  [-176.1859  -28.0415  159.8545    0.      -41.8131   -3.8141]]
-    ik = np.round(np.degrees(rb.userIK(p)), 4)
-    print(ik)
+    p = Coord(200, 100, 50)
+    ik = rb.userIK(p)
+    for i in ik:
+        i_deg = np.round(np.degrees(i), 4)
+        print(list(i_deg))
+        # print("out of range\n" if rb.cv_joints_range(i) else "good\n")
+    # fk = rb.userFK(np.array([0, 0, 0, 0, 0, 0]))
+    # print(fk.end_effector.coordToNp())
+
+
+def fanuc_test():
+
+    coords = np.array(
+        [
+            [-373.208749836348, 228.955231973641, 196.024700331349],
+            [-36.1572633758018, 22.1816734665755, 484.919647747134],
+            [334.651504889447, -205.301223419573, 275.664162125156],
+            [373.530673209224, -229.152724772368, -211.92051341263],
+            [-390.739595247152, -197.55464537339, 196.024700331349],
+            [-37.8556892433541, -19.1395173532534, 484.919647747134],
+            [350.371189385811, 177.144719680597, 275.664162125156],
+            [391.0766404222, 197.725052572561, -211.92051341263],
+        ]
+    )
+    fanuc = FanucKinematics()
+    i = 7
+    p = Coord(coords[i, 0], coords[i, 1], coords[i, 2])
+    ik = fanuc.inverse_kines(p, np.array([0, 0, -3.14159265]))
+    for i in ik:
+        i_deg = np.round(np.degrees(i), 4)
+        print(list(i_deg))
+
+    # fanuc._validate(p, np.array([0, 0, -3.14159265]))
 
 
 def puma_test():
@@ -44,11 +67,16 @@ def puma_test():
     # p = Coord(540, 210, 260)
     # p = Coord(180, -400, 400)
     p = Coord(-180, 400, -200)
+    ik = puma.inverse_kines(p, np.array([0, 0, -3.14159265]))
+    for i in ik:
+        i_deg = np.round(np.degrees(i), 4)
+        print(list(i_deg))
 
-    puma._validate(p, [0, 0, -3.14159265])
+    # puma._validate(p, [0, 0, -3.14159265])
 
 
 if __name__ == "__main__":
     # main()
     # ik_test()
-    puma_test()
+    fanuc_test()
+    # puma_test()
