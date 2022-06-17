@@ -34,7 +34,8 @@ class DrawRobots:
         # self.ccv3 = ChromoCalcV3(self.config, self.points, 0, 1)
         self.datetime_now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
 
-    def cph(self, points):
+    @staticmethod
+    def cph(points):
         point1 = gm.geometry.Point(points[0][0], points[0][1], points[0][2])
         point2 = gm.geometry.Point(points[1][0], points[1][1], points[1][2])
         point3 = gm.geometry.Point(points[2][0], points[2][1], points[2][2])
@@ -151,24 +152,24 @@ class DrawRobots:
         chrom = np.genfromtxt(f"{self.folderName}/Chrom.csv", delimiter=",", dtype="int32")
         for chromoInd in range(chrom.shape[0]):
             if is_log:
-                Path(f"./ValidityFigure/{self.folderName[11:]}/ChromID_{chromoInd}/log").mkdir(
+                Path(f"./ValidityFigure/{self.datetime_now}/ChromID_{chromoInd}/log").mkdir(
                     parents=True, exist_ok=True
                 )
                 logging = Collision_status(
-                    0, f"./ValidityFigure/{self.folderName[11:]}/ChromID_{chromoInd}/log"
+                    0, f"./ValidityFigure/{self.datetime_now}/ChromID_{chromoInd}/log"
                 )
             totalInt_q, _ = ccv3.interpolation(chrom[chromoInd, :])
             points_count = np.shape(totalInt_q[0])[0]
-            Path(f"./ValidityFigure/{self.folderName[11:]}/ChromID_{chromoInd}/figure").mkdir(
+            Path(f"./ValidityFigure/{self.datetime_now}/ChromID_{chromoInd}/figure").mkdir(
                 parents=True, exist_ok=True
             )
             for intPoint in range(points_count):
                 path = (
-                    f"./ValidityFigure/{self.folderName[11:]}/"
+                    f"./ValidityFigure/{self.datetime_now}/"
                     + f"ChromID_{chromoInd}/figure/figure_{intPoint}"
                 )
                 try:
-                    self.draw(totalInt_q, intPoint, path, axis)
+                    self.draw(totalInt_q, intPoint, path, axis, is_show=False)
                 except Exception as e:
                     print(f"can't draw, because {e}")
                     # raise
@@ -176,10 +177,10 @@ class DrawRobots:
         if is_log:
             _ = ccv3.score_step(chrom[chromoInd, :], logging)
 
-    def png_to_gif(self, fps=24):
-        chrom_count = len(os.listdir(f"./ValidityFigure/{self.folderName[11:]}"))
+    def png_to_gif(self, fps=20):
+        chrom_count = len(os.listdir(f"./ValidityFigure/{self.datetime_now}"))
         for i in range(chrom_count):
-            png_dir = f"./ValidityFigure/{self.folderName[11:]}/ChromID_{i}/figure"
+            png_dir = f"./ValidityFigure/{self.datetime_now}/ChromID_{i}/figure"
             images = []
             png_list = os.listdir(png_dir)
             sortedList = natsort.natsorted(png_list)
@@ -187,7 +188,7 @@ class DrawRobots:
                 if file_name.endswith(".png"):
                     file_path = os.path.join(png_dir, file_name)
                     images.append(imageio.imread(file_path))
-            path = f"./ValidityFigure/{self.folderName[11:]}/ChromID_{i}/animate.gif"
+            path = f"./ValidityFigure/{self.datetime_now}/ChromID_{i}/animate.gif"
             imageio.mimsave(path, images, format="GIF", fps=fps)
 
     def draw_manuf_dist(self):
@@ -553,78 +554,6 @@ class IndexComparision:
         writer.save()
 
 
-class ResultAnalyzeApp:
-    def __init__(self) -> None:
-
-        self.root = tk.Tk()
-        self.root.title("HighSchool AI Project")
-        self.root.protocol("WM_DELETE_WINDOW", self.destructor)
-        self.folders_name = ["111aa", "222", "333", "444"]
-        self.root.geometry("1280x720")
-        self.root.grid_rowconfigure(0, weight=1)
-        self.root.grid_columnconfigure(0, weight=1)
-
-        # test = self.get_files_path()
-
-        # --------show folder list--------
-        df_col = ["path"]
-        self.tree = ttk.Treeview(self.root, show="headings", columns=df_col)
-        # counter = len(self.folders_name)
-        # rowLabels = self.folders_name.index
-        for j in range(len(df_col)):
-            self.tree.column(df_col[j], width=1150)
-            self.tree.heading(df_col[j], text=df_col[j])
-        for i, d in enumerate(self.folders_name):
-            self.tree.insert("", len(self.folders_name) - 1 + i, values=[d])
-        self.tree.pack(side=tk.BOTTOM, padx=20)
-
-        # # --------path button--------
-
-        frame_sel_path = tk.Frame(self.root)
-        self.button_sel_path = tk.Button(
-            frame_sel_path, text="select paths", width=15, command=self.select_files_path
-        )
-        self.button_sel_path.pack(side=tk.RIGHT, pady=50)
-        self.button_del_path = tk.Button(frame_sel_path, text="delete paths", width=15, command=self.delete)
-        self.button_del_path.pack(side=tk.RIGHT, pady=50)
-        frame_sel_path.pack()
-
-        frame_operations = tk.Frame(self.root)
-        self.button_SP = tk.Button(frame_operations, text="SP", width=15, command=self.select_files_path)
-        self.button_OS = tk.Button(frame_operations, text="OS", width=15, command=self.select_files_path)
-        self.button_DM = tk.Button(frame_operations, text="DM", width=15, command=self.select_files_path)
-
-        self.video_loop()
-        # self.root.mainloop()
-
-    def video_loop(self) -> None:
-        # self.paths.config(text=f"{self.folders_name}")
-
-        self.root.after(30, self.video_loop)  # call the same function after 30 milliseconds
-
-    def select_files_path(self):
-        dirs = tkf.askopendirnames()
-        for i, d in enumerate(dirs):
-            self.tree.insert("", len(self.folders_name) - 1 + i, values=[d])
-        dirs = list(dirs)
-        self.folders_name.extend(dirs)
-
-    def delete(self) -> None:
-        selected_item = self.tree.selection()
-        for i in range(len(selected_item)):
-            selected_values = self.tree.item(selected_item[i])["values"]
-            selected_values = selected_values[0]
-            self.folders_name.remove(str(selected_values))
-            self.tree.delete(selected_item[i])
-
-    def sp(self):
-        IndexComparision.main_distribution_metric()
-
-    def destructor(self) -> None:
-        print("[INFO] closing...")
-        self.root.destroy()
-
-
 class Single_Robot:
     def save_pareto() -> None:
         objv_path_1 = "./all_results/Robot_1/noStep/Gen10000/random/Hamming15/220308-061909"
@@ -723,17 +652,9 @@ def index_test():
 
 
 def draw_figure():
-    # dr = DrawRobots("./all_results/Robot_2/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226")
-    # dr = DrawRobots(
-    #     "./all_results/Robot_2/points_count25/noStep/Gen10000/random/Hamming5/poly_traj/220513-211237"
-    # )
-    # dr = DrawRobots(
-    #     "./all_results/Robot_2/points_count50/noStep/Gen10000/random/Hamming10/poly_traj/220513-110428"
-    # )
-    # dr = DrawRobots("./all_results/Robot_2/noStep/Gen10000/random/Hamming20/poly_traj/220421-180516")
-    # dr = DrawRobots("./all_results/Robot_2/noStep/Gen10000/no_replace/poly_traj/220419-203253")
     dr = DrawRobots(
-        "./all_results/Robot_4/points_count100/noStep/Gen5000/replace/Hamming20/poly_traj/220606-150353"
+        "./all_results/fanuc/Robot_2/points_count100"
+        + "/noStep/Gen10000/replace/Hamming10/poly_traj/220526-040815"
     )
     # dr.draw_manuf_route(is_connect=True)
     dr.draw_pareto()
@@ -769,6 +690,15 @@ def draw_robot_polygons_vs_segs():
     dr._draw_cph_vs_seg([q_best_1, q_best_2], 0, "1", axis=[[0, 700], [-350, 350], [-350, 350]])
 
 
+def draw_route_gif():
+    dr = DrawRobots(
+        "./all_results/fanuc/Robot_4/points_count100/noStep/Gen5000"
+        + "/replace/Hamming20/poly_traj/220606-150353"
+    )
+    dr.chrom_to_png(axis=[[0, 700], [-350, 350], [-350, 350]])
+    dr.png_to_gif()
+
+
 if __name__ == "__main__":
 
     # try:
@@ -790,5 +720,6 @@ if __name__ == "__main__":
     # test = ccv3.interpolation_step(chrom[3, :])
     # print()
     # draw_figure()
-    index_test()
+    # index_test()
     # draw_robot()
+    draw_route_gif()

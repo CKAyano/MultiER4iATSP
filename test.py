@@ -1,9 +1,9 @@
-from chromoCalcV3 import Trajectory
+from chromoCalcV3 import ChromoCalcV3, Trajectory
 from robotCalc_pygeos import RobotCalc_pygeos
 import numpy as np
 from robot_configuration import PumaKinematics, FanucKinematics
-
-from robot_configuration import Config, Coord
+from robot_configuration import Config, Coord, Position, Robot
+from validity import DrawRobots
 
 
 def main() -> None:
@@ -75,8 +75,56 @@ def puma_test():
     # puma._validate(p, [0, 0, -3.14159265])
 
 
+def test_collision():
+    dr = DrawRobots(
+        "./all_results/fanuc/Robot_4/points_count100/"
+        + "noStep/Gen5000/replace/Hamming20/poly_traj/220606-150353"
+    )
+    robots = []
+    position = [Position.LEFT, Position.RIGHT, Position.UP, Position.DOWN]
+    config = Config("./CONFIG.yml")
+    for i in range(config.robots_count):
+        robots.append(Robot(i, position[i]))
+    q1 = np.array(
+        [
+            [
+                -0.4687295299717741,
+                1.18680336559566,
+                -0.9551351965407516,
+                3.237707442091745e-09,
+                1.3391281593269622,
+                -0.468729530743935,
+            ]
+        ]
+    )
+    q2 = np.array(
+        [
+            [
+                0.27449472976025263,
+                0.8792894195204223,
+                -0.40296621020486306,
+                3.798087576817292e-09,
+                1.0944731165354042,
+                0.27449472803526315,
+            ]
+        ]
+    )
+    q3 = np.array([[1.5707963267948966, 0.7853981633974483, 0.0, 0.0, 1.5707963267948966, 0.0]])
+    q4 = np.array([[1.5707963267948966, 0.7853981633974483, 0.0, 0.0, 1.5707963267948966, 0.0]])
+    rc = RobotCalc_pygeos(config)
+    dr.rc = rc
+    dr.config = config
+    dr.config.link_width /= 2
+    dr.draw([q1, q2, q3, q4], 0)
+    print(np.degrees(q1))
+    print(np.degrees(q2))
+
+    # print(rc.cv_collision(q1, q2, robots[0], robots[1]))
+
+
 if __name__ == "__main__":
     # main()
     # ik_test()
-    fanuc_test()
+    # fanuc_test()
+    test_collision()
     # puma_test()
