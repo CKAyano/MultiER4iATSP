@@ -25,10 +25,14 @@ class RobotCalc_pygeos:
             self.robot_kine = PumaKinematics()
 
         test_links = np.array(self.robot_kine.collision_links, dtype=str)
+        test_links_width = self.robot_kine.links_width
         if test_links.ndim == 1:
             test_links = test_links[None, :]
+            test_links_width = test_links_width[None, :]
         if test_links.shape[1] != 2:
             raise TypeError("col of argument should be two")
+        if len(test_links_width) != test_links.shape[0]:
+            raise TypeError("number of collision_links and links_width is not matched")
 
     def userFK(self, q: np.ndarray) -> Coord_all:
         return self.robot_kine.forward_kines(q)
@@ -182,7 +186,7 @@ class RobotCalc_pygeos:
                     "setting wrong links for collision detection"
                     + "(change collision_links in robot_configuraion.py)"
                 )
-            points = self._get_link_points_by_joints_position(q, v_f, v_e)
+            points = self._get_link_points_by_joints_position(q, v_f, v_e, self.robot_kine.links_width[i])
             rings = self._get_link_rings(points)
             rings_all += rings
         cpg_all = pgc.polygons(list(rings_all))
@@ -224,16 +228,16 @@ class RobotCalc_pygeos:
                 normed_normalVec_2 = np.array([0, 1, 0])
         return v1_point, v2_point, normed_normalVec_1, normed_normalVec_2
 
-    def _get_link_points_by_joints_position(self, q, v_f: Coord, v_e: Coord):
+    def _get_link_points_by_joints_position(self, q, v_f: Coord, v_e: Coord, link_width: float):
         vf_point, ve_point, normalVec_1, normalVec_2 = self._get_normal_vec(q, v_f, v_e)
-        p1 = vf_point + (-normalVec_1 + normalVec_2) * self.config.link_width / 2
-        p2 = vf_point + (normalVec_1 + normalVec_2) * self.config.link_width / 2
-        p3 = vf_point + (normalVec_1 - normalVec_2) * self.config.link_width / 2
-        p4 = vf_point + (-normalVec_1 - normalVec_2) * self.config.link_width / 2
-        p5 = ve_point + (-normalVec_1 + normalVec_2) * self.config.link_width / 2
-        p6 = ve_point + (normalVec_1 + normalVec_2) * self.config.link_width / 2
-        p7 = ve_point + (normalVec_1 - normalVec_2) * self.config.link_width / 2
-        p8 = ve_point + (-normalVec_1 - normalVec_2) * self.config.link_width / 2
+        p1 = vf_point + (-normalVec_1 + normalVec_2) * link_width
+        p2 = vf_point + (normalVec_1 + normalVec_2) * link_width
+        p3 = vf_point + (normalVec_1 - normalVec_2) * link_width
+        p4 = vf_point + (-normalVec_1 - normalVec_2) * link_width
+        p5 = ve_point + (-normalVec_1 + normalVec_2) * link_width
+        p6 = ve_point + (normalVec_1 + normalVec_2) * link_width
+        p7 = ve_point + (normalVec_1 - normalVec_2) * link_width
+        p8 = ve_point + (-normalVec_1 - normalVec_2) * link_width
         return p1, p2, p3, p4, p5, p6, p7, p8
 
     def get_robot_segments(self, q, robot):

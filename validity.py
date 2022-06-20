@@ -14,9 +14,6 @@ import natsort
 import matplotlib.pyplot as plt
 import pandas as pd
 import datetime
-import tkinter as tk
-from tkinter import ttk
-import tkfilebrowser as tkf
 from mpl_toolkits.mplot3d import Axes3D
 
 
@@ -28,8 +25,9 @@ class DrawRobots:
             self.config = Config(f"{folderName}/CONFIG.yml")
         self.points = np.genfromtxt(f"{folderName}/output_point.csv", delimiter=",")
         self.folderName = folderName
-        self.config.link_width = self.config.link_width / 2
         self.rc = RobotCalc_pygeos(self.config)
+        for i in range(len(self.rc.robot_kine.links_width)):
+            self.rc.robot_kine.links_width[i] /= 2
         self.robots_color = ["k", "royalblue", "r", "g"]
         # self.ccv3 = ChromoCalcV3(self.config, self.points, 0, 1)
         self.datetime_now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
@@ -60,7 +58,9 @@ class DrawRobots:
         for i in range(link_count):
             v_f = va_all.__dict__.get(self.rc.robot_kine.collision_links[i][0])
             v_e = va_all.__dict__.get(self.rc.robot_kine.collision_links[i][1])
-            points = self.rc._get_link_points_by_joints_position(q, v_f, v_e)
+            points = self.rc._get_link_points_by_joints_position(
+                q, v_f, v_e, self.rc.robot_kine.links_width[i]
+            )
             cph = self.cph(points)
             cph_all += (cph,)
         return cph_all
@@ -80,7 +80,9 @@ class DrawRobots:
             va_e = va_all.__dict__.get(self.rc.robot_kine.collision_links[i][1])
             vb_f = vb_all.__dict__.get(self.rc.robot_kine.collision_links[i][0])
             vb_e = vb_all.__dict__.get(self.rc.robot_kine.collision_links[i][1])
-            points = self.rc._get_link_points_by_joints_position(q_best[0][int_point, :], va_f, va_e)
+            points = self.rc._get_link_points_by_joints_position(
+                q_best[0][int_point, :], va_f, va_e, self.rc.robot_kine.links_width[i]
+            )
             vb_points_f = gm.geometry.Point(vb_f.xx, vb_f.yy, vb_f.zz)
             vb_points_e = gm.geometry.Point(vb_e.xx, vb_e.yy, vb_e.zz)
             gm_seg = gm.geometry.Segment(vb_points_f, vb_points_e)
@@ -663,7 +665,8 @@ def draw_figure():
 def draw_robot():
     # dr = DrawRobots("./all_results/Robot_4/noStep/Gen10000/random/Hamming30/220312-151028")
     dr = DrawRobots(
-        "./all_results/Robot_2/points_count100/noStep/Gen10000/replace/Hamming10/poly_traj/220522-085023"
+        "./all_results/fanuc/Robot_2/points_count100/"
+        + "noStep/Gen10000/replace/Hamming10/poly_traj/220522-085023"
     )
 
     q_best_1 = np.radians(np.array([[10, 10, -20, 0, 0, 0]]))
@@ -677,7 +680,8 @@ def draw_robot():
 
 def draw_robot_polygons_vs_segs():
     dr = DrawRobots(
-        "./all_results/Robot_2/points_count100/noStep/Gen10000/random/Hamming10/poly_traj/220422-222226"
+        "./all_results/fanuc/Robot_2/points_count100/"
+        + "noStep/Gen10000/random/Hamming10/poly_traj/220422-222226"
     )
     dr.config.baseX_offset -= 200
     # q_best_1 = np.radians(np.array([[0, 60, -20, 0, -90, 0]]))
@@ -722,4 +726,5 @@ if __name__ == "__main__":
     # draw_figure()
     # index_test()
     # draw_robot()
-    draw_route_gif()
+    draw_robot_polygons_vs_segs()
+    # draw_route_gif()

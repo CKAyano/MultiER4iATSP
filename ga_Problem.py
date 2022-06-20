@@ -17,7 +17,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
         is_recombine_init_chromo = config.is_recombine_init_chromo
         custom_initChrom = config.custom_initChrom
         points_range = config.points_range
-        link_width = config.link_width
+        # link_width = config.link_width
         interp_mode = config.interp_mode
         interp_step_freq = config.interp_step_period
         mean_motion_velocity_deg = np.degrees(config.mean_motion_velocity_rad)
@@ -46,7 +46,7 @@ class MyProblem(ea.Problem):  # 继承Problem父类
                 file.write(f'{"fix init chromosome:":<25}{custom_initChrom}\n')
                 file.write(f'{"points range:":<25}{points_range}\n')
                 file.write(f'{"number of points:":<25}{points_count}\n')
-                file.write(f'{"link width:":<25}{link_width}\n')
+                # file.write(f'{"link width:":<25}{link_width}\n')
                 file.write(f'{"interp mode:":<25}{interp_mode}\n')
                 file.write(f'{"interp step freq:":<25}{interp_step_freq}\n')
                 file.write(f'{"mean motion velocity:":<25}{mean_motion_velocity_deg}\n')

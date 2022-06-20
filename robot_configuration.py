@@ -143,6 +143,9 @@ class Config:
             self.direct_array = np.array(config["direct_array"])
         if "zyx_euler" in config:
             self.zyx_euler = np.array(config["zyx_euler"])
+        if "zyx_euler_deg" in config:
+            self.zyx_euler = np.radians(np.array(config["zyx_euler_deg"]))
+
         self.baseX_offset = sum(self.points_range[0])
         self.baseY_offset = (self.points_range[1][1] - self.points_range[1][0]) / 2 + self.points_range[0][0]
 
@@ -151,6 +154,11 @@ class RobotKinematics(ABC):
     @property
     @abstractmethod
     def collision_links(self) -> List[List]:
+        pass
+
+    @property
+    @abstractmethod
+    def links_width(self) -> List[float]:
         pass
 
     @property
@@ -199,6 +207,8 @@ class FanucKinematics(RobotKinematics):
     d_4 = 290
 
     collision_links = [["v2", "v4"], ["v4", "v5"]]
+
+    links_width = [200, 100]
 
     joints_range_deg = [[-170, 170], [-110, 120], [-80, 260], [-190, 190], [-120, 120], [-360, 360]]
 
@@ -402,6 +412,8 @@ class PumaKinematics(RobotKinematics):
     d_4 = 433.07
 
     collision_links = [["v2", "v3"], ["v3", "v4"]]
+
+    links_width = []
 
     joints_range_deg = [[-160, 160], [-225, 45], [-225, 45], [-140, 140], [-100, 100], [-266, 266]]
 

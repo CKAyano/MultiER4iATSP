@@ -114,7 +114,9 @@ def test_collision():
     rc = RobotCalc_pygeos(config)
     dr.rc = rc
     dr.config = config
-    dr.config.link_width /= 2
+    # dr.config.link_width /= 2
+    for i in range(len(dr.rc.robot_kine.links_width)):
+        dr.rc.robot_kine.links_width[i] /= 2
     dr.draw([q1, q2, q3, q4], 0)
     print(np.degrees(q1))
     print(np.degrees(q2))
