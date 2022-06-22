@@ -1,0 +1,15 @@
+start time:              220620-132711
+number of robots:        2
+hamming crowding:        True
+recombine init chromosome:True
+fix init chromosome:     True
+points range:            [[200, 1000], [-450, 450], [-400, -400]]
+number of points:        100
+interp mode:             poly_traj
+interp step freq:        0.05
+mean motion velocity:    100.0
+
+number of generation:    [10000]
+number of chromosome:    50
+
+pass time:               15:41:27.409501(56487.40950131416 secs)
