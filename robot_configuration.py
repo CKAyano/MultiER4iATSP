@@ -362,6 +362,9 @@ class FanucKinematics(RobotKinematics):
                 np.arctan2(Rd[2, 1] / np.sin(q5[1]), Rd[2, 0] / np.sin(q5[1])),
                 np.arctan2(Rd[2, 1] / np.sin(q5[0]), Rd[2, 0] / np.sin(q5[0])),
             ]
+            q4 = angleAdj(q4)
+            q5 = angleAdj(q5)
+            q6 = angleAdj(q6)
             q = np.array([[q1, q2, q3, q4[0], q5[0], q6[0]], [q1, q2, q3, q4[1], q5[1], q6[1]]])
             q_all = np.vstack((q_all, q))
         return q_all
@@ -400,6 +403,9 @@ class FanucKinematics(RobotKinematics):
                 np.arctan2(m6_u / np.sin(q5[0]), m6_d / np.sin(q5[0])),
                 np.arctan2(m6_u / np.sin(q5[1]), m6_d / np.sin(q5[1])),
             ]
+            q4 = angleAdj(q4)
+            q5 = angleAdj(q5)
+            q6 = angleAdj(q6)
             q = np.array([[q[0], q[1], q[2], q4[0], q5[0], q6[0]], [q[0], q[1], q[2], q4[1], q5[1], q6[1]]])
             q_all = np.vstack((q_all, q))
         return q_all
@@ -570,6 +576,9 @@ class PumaKinematics(RobotKinematics):
                 np.arctan2(m6_u / np.sin(q5[0]), m6_d / np.sin(q5[0])),
                 np.arctan2(m6_u / np.sin(q5[1]), m6_d / np.sin(q5[1])),
             ]
+            q4 = angleAdj(q4)
+            q5 = angleAdj(q5)
+            q6 = angleAdj(q6)
             q = np.array([[q[0], q[1], q[2], q4[0], q5[0], q6[0]], [q[0], q[1], q[2], q4[1], q5[1], q6[1]]])
             q_all = np.vstack((q_all, q))
         return q_all
