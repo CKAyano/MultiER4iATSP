@@ -419,7 +419,7 @@ class PumaKinematics(RobotKinematics):
 
     collision_links = [["v2", "v3"], ["v3", "v4"]]
 
-    links_width = []
+    links_width = [250, 170]
 
     joints_range_deg = [[-160, 160], [-225, 45], [-225, 45], [-140, 140], [-100, 100], [-266, 266]]
 
