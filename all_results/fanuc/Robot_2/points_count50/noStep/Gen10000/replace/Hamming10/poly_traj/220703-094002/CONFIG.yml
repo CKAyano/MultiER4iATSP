@@ -1,0 +1,46 @@
+robot_name: "fanuc"
+
+robots_count: 2
+
+# interp_mode: "max_deg", "poly_traj"
+interp_mode: "poly_traj"
+
+interp_step_period: 0.05
+
+mean_motion_velocity_deg: 100
+
+#  [3, 5, 10, 15]
+is_hamming_crowding:
+  - True
+  - 10
+  - "replace"
+
+is_recombine_init_chromo: True
+
+custom_initChrom: True
+
+points_range:
+  -
+    - 100
+    - 800
+  -
+    - -300
+    - 300
+  -
+    - 50
+    - 50
+
+link_width: 200
+
+org_pos:
+  - 90
+  - 45
+  - 0
+  - 0
+  - 90
+  - 0
+
+zyx_euler_deg:
+  - 0
+  - 0
+  - 180
