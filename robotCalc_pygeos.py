@@ -206,26 +206,28 @@ class RobotCalc_pygeos:
     def _get_normal_vec(q, v_f: Coord, v_e: Coord):
         v1_point = v_f.coordToNp()
         v2_point = v_e.coordToNp()
-        if q[0] < np.pi / 2 + 0.0001 and q[0] > np.pi / 2 - 0.0001:
+        # if q[0] < np.pi / 2 + 0.0001 and q[0] > np.pi / 2 - 0.0001:
+        #     normed_normalVec_1 = np.array([1, 0, 0])
+        #     normed_normalVec_2 = np.array([0, 1, 0])
+        # elif q[0] < -np.pi / 2 + 0.0001 and q[0] > -np.pi / 2 - 0.0001:
+        #     normed_normalVec_1 = np.array([1, 0, 0])
+        #     normed_normalVec_2 = np.array([0, -1, 0])
+        # else:
+        # vector_1 = np.array([np.tan(q[0]), -1, 0])
+        vector_2 = v2_point - v1_point
+        vector_1 = np.array([vector_2[0], vector_2[1], v1_point[2]])
+        # vector_3 = np.array([1, np.tan(q[0]), 0])
+        # vector_3 = np.array([v1_point[0], vector_2[1], vector_2[2]])
+        vecCross_1 = np.cross(vector_1, vector_2)
+        length_vec_1 = np.linalg.norm(vecCross_1)
+        normed_normalVec_1 = vecCross_1 / length_vec_1
+        vecCross_2 = np.cross(vecCross_1, vector_2)
+        length_vec_2 = np.linalg.norm(vecCross_2)
+        normed_normalVec_2 = vecCross_2 / length_vec_2
+        if length_vec_1 == 0:
             normed_normalVec_1 = np.array([1, 0, 0])
+        if length_vec_2 == 0:
             normed_normalVec_2 = np.array([0, 1, 0])
-        elif q[0] < -np.pi / 2 + 0.0001 and q[0] > -np.pi / 2 - 0.0001:
-            normed_normalVec_1 = np.array([1, 0, 0])
-            normed_normalVec_2 = np.array([0, -1, 0])
-        else:
-            vector_1 = np.array([np.tan(q[0]), -1, 0])
-            vector_2 = v2_point - v1_point
-            vector_3 = np.array([1, np.tan(q[0]), 0])
-            vecCross_1 = np.cross(vector_1, vector_2)
-            length_vec_1 = np.linalg.norm(vecCross_1)
-            normed_normalVec_1 = vecCross_1 / length_vec_1
-            vecCross_2 = np.cross(vector_3, vector_2)
-            length_vec_2 = np.linalg.norm(vecCross_2)
-            normed_normalVec_2 = vecCross_2 / length_vec_2
-            if length_vec_1 == 0:
-                normed_normalVec_1 = np.array([1, 0, 0])
-            if length_vec_2 == 0:
-                normed_normalVec_2 = np.array([0, 1, 0])
         return v1_point, v2_point, normed_normalVec_1, normed_normalVec_2
 
     def _get_link_points_by_joints_position(self, q, v_f: Coord, v_e: Coord, link_width: float):
