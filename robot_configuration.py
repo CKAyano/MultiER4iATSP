@@ -50,7 +50,8 @@ class Coord_all:
 
     @property
     def end_effector(self):
-        return [v for v in self.__dict__.values() if v is not None][-1]
+        v_list = ["v1", "v2", "v3", "v4", "v5", "v6"]
+        return [self.__dict__[v] for v in v_list if self.__dict__[v] is not None][-1]
 
     def set_new_value_by_str_of_key(self, v: str, new_value):
         if v == "v1":
@@ -181,6 +182,8 @@ class RobotKinematics(ABC):
     def _validate(self, vv: Coord, zyx_euler):
         print(vv)
         print()
+        if isinstance(zyx_euler, list):
+            zyx_euler = np.array(zyx_euler)
         iks = self.inverse_kines(vv, zyx_euler)
         is_true_list = []
         for ik in iks:
@@ -208,7 +211,7 @@ class FanucKinematics(RobotKinematics):
 
     collision_links = [["v2", "v4"], ["v4", "v5"]]
 
-    links_width = [200, 100]
+    links_width = [100, 100]
 
     joints_range_deg = [[-170, 170], [-110, 120], [-80, 260], [-190, 190], [-120, 120], [-360, 360]]
 

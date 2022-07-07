@@ -50,9 +50,11 @@ def fanuc_test():
         ]
     )
     fanuc = FanucKinematics()
-    i = 7
+    i = 2
     p = Coord(coords[i, 0], coords[i, 1], coords[i, 2])
-    ik = fanuc.inverse_kines(p, np.array([0, 0, -3.14159265]))
+    fanuc._validate(p, [0, 0, np.pi])
+    direction = np.radians(np.array([30, 30, 30]))
+    ik = fanuc.inverse_kines(p, direction)
     for i in ik:
         i_deg = np.round(np.degrees(i), 4)
         print(list(i_deg))
@@ -127,6 +129,6 @@ def test_collision():
 if __name__ == "__main__":
     # main()
     # ik_test()
-    # fanuc_test()
-    test_collision()
+    fanuc_test()
+    # test_collision()
     # puma_test()

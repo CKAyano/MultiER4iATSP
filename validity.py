@@ -18,7 +18,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 class DrawRobots:
-    def __init__(self, folderName: str) -> None:
+    def __init__(self, folderName: str, folder_name=None) -> None:
         if os.path.exists(f"{folderName}/config.yml"):
             self.config = Config(f"{folderName}/config.yml")
         else:
@@ -30,7 +30,10 @@ class DrawRobots:
             self.rc.robot_kine.links_width[i] /= 2
         self.robots_color = ["k", "royalblue", "r", "g"]
         # self.ccv3 = ChromoCalcV3(self.config, self.points, 0, 1)
-        self.datetime_now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
+        if folder_name is None:
+            self.folder_name = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
+        else:
+            self.folder_name = folder_name
 
     @staticmethod
     def cph(points):
@@ -154,21 +157,18 @@ class DrawRobots:
         chrom = np.genfromtxt(f"{self.folderName}/Chrom.csv", delimiter=",", dtype="int32")
         for chromoInd in range(chrom.shape[0]):
             if is_log:
-                Path(f"./ValidityFigure/{self.datetime_now}/ChromID_{chromoInd}/log").mkdir(
+                Path(f"./ValidityFigure/{self.folder_name}/ChromID_{chromoInd}/log").mkdir(
                     parents=True, exist_ok=True
                 )
-                logging = Collision_status(
-                    0, f"./ValidityFigure/{self.datetime_now}/ChromID_{chromoInd}/log"
-                )
+                logging = Collision_status(0, f"./ValidityFigure/{self.folder_name}/ChromID_{chromoInd}/log")
             totalInt_q, _ = ccv3.interpolation(chrom[chromoInd, :])
             points_count = np.shape(totalInt_q[0])[0]
-            Path(f"./ValidityFigure/{self.datetime_now}/ChromID_{chromoInd}/figure").mkdir(
+            Path(f"./ValidityFigure/{self.folder_name}/ChromID_{chromoInd}/figure").mkdir(
                 parents=True, exist_ok=True
             )
             for intPoint in range(points_count):
                 path = (
-                    f"./ValidityFigure/{self.datetime_now}/"
-                    + f"ChromID_{chromoInd}/figure/figure_{intPoint}"
+                    f"./ValidityFigure/{self.folder_name}/" + f"ChromID_{chromoInd}/figure/figure_{intPoint}"
                 )
                 try:
                     self.draw(totalInt_q, intPoint, path, axis, is_show=False)
@@ -180,9 +180,9 @@ class DrawRobots:
             _ = ccv3.score_step(chrom[chromoInd, :], logging)
 
     def png_to_gif(self, fps=20):
-        chrom_count = len(os.listdir(f"./ValidityFigure/{self.datetime_now}"))
+        chrom_count = len(os.listdir(f"./ValidityFigure/{self.folder_name}"))
         for i in range(chrom_count):
-            png_dir = f"./ValidityFigure/{self.datetime_now}/ChromID_{i}/figure"
+            png_dir = f"./ValidityFigure/{self.folder_name}/ChromID_{i}/figure"
             images = []
             png_list = os.listdir(png_dir)
             sortedList = natsort.natsorted(png_list)
@@ -190,7 +190,7 @@ class DrawRobots:
                 if file_name.endswith(".png"):
                     file_path = os.path.join(png_dir, file_name)
                     images.append(imageio.imread(file_path))
-            path = f"./ValidityFigure/{self.datetime_now}/ChromID_{i}/animate.gif"
+            path = f"./ValidityFigure/{self.folder_name}/ChromID_{i}/animate.gif"
             imageio.mimsave(path, images, format="GIF", fps=fps)
 
     def draw_manuf_dist(self):
@@ -225,7 +225,7 @@ class DrawRobots:
         py = self.points[:, 1]
 
         for c in range(chrom_count):
-            path_save = f"./ValidityFigure/{self.datetime_now}/manuf_path"
+            path_save = f"./ValidityFigure/{self.folder_name}/manuf_path"
             Path(path_save).mkdir(parents=True, exist_ok=True)
             chrom = chroms[c, :]
             ccv3.set_robotsPath(chrom)
@@ -263,7 +263,7 @@ class DrawRobots:
             # plt.show()
 
     def draw_pareto(self):
-        path_save = f"./ValidityFigure/{self.datetime_now}"
+        path_save = f"./ValidityFigure/{self.folder_name}"
         Path(path_save).mkdir(parents=True, exist_ok=True)
         objV = np.genfromtxt(f"{self.folderName}/ObjV.csv", delimiter=",")
         objV = IndexComparision._sort_obj_value(objV)
@@ -655,27 +655,32 @@ def index_test():
 
 def draw_figure():
     dr = DrawRobots(
-        "./all_results/fanuc/Robot_2/points_count100"
-        + "/noStep/Gen10000/replace/Hamming10/poly_traj/220526-040815"
+        "./all_results/puma/Robot_2/points_count50/noStep/"
+        + "Gen10000/replace/Hamming5/poly_traj/220623-003729"
     )
     # dr.draw_manuf_route(is_connect=True)
+    dr.draw_manuf_dist()
     dr.draw_pareto()
 
 
 def draw_robot():
     # dr = DrawRobots("./all_results/Robot_4/noStep/Gen10000/random/Hamming30/220312-151028")
+    # dr = DrawRobots(
+    #     "./all_results/fanuc/Robot_2/points_count100/"
+    #     + "noStep/Gen10000/replace/Hamming10/poly_traj/220522-085023"
+    # )
     dr = DrawRobots(
-        "./all_results/fanuc/Robot_2/points_count100/"
-        + "noStep/Gen10000/replace/Hamming10/poly_traj/220522-085023"
+        "./all_results/puma/Robot_2/points_count100/noStep"
+        + "/Gen10000/replace/Hamming10/poly_traj/220621-050842"
     )
 
-    q_best_1 = np.radians(np.array([[10, 10, -20, 0, 0, 0]]))
-    q_best_2 = np.radians(np.array([[20, 20, -30, 0, 0, 0]]))
-    q_best_3 = np.radians(np.array([[30, 30, -40, 0, 0, 0]]))
-    q_best_4 = np.radians(np.array([[40, 40, -50, 0, 0, 0]]))
+    q_best_1 = np.radians(np.array([[1, 1, 1, 1, 1, 1]]))
+    q_best_2 = np.radians(np.array([[1, 1, 1, 1, 1, 1]]))
+    # q_best_1 = np.radians(np.array([[30, 30, -40, 0, 0, 0]]))
+    # q_best_2 = np.radians(np.array([[40, 40, -50, 0, 0, 0]]))
 
     # dr.draw([q_best_1, q_best_2, q_best_3, q_best_4], 0, axis=[[-100, 1000], [-550, 550], [-350, 350]])
-    dr.draw([q_best_1, q_best_2], 0, axis=[[-100, 1000], [-550, 550], [-350, 350]])
+    dr.draw([q_best_1, q_best_2], 0, axis=[[-100, 1200], [-650, 650], [-650, 650]])
 
 
 def draw_robot_polygons_vs_segs():
@@ -695,10 +700,38 @@ def draw_robot_polygons_vs_segs():
 
 
 def draw_route_gif():
+    # dr = DrawRobots(
+    #     "./all_results/fanuc/Robot_2/points_count25/noStep"
+    #     + "/Gen10000/replace/Hamming3/poly_traj/220614-204206",
+    #     "fanuc_2-25",
+    # )
+    # dr = DrawRobots(
+    #     "./all_results/fanuc/Robot_2/points_count50/noStep"
+    #     + "/Gen10000/replace/Hamming5/poly_traj/220615-020536",
+    #     "fanuc_2-50",
+    # )
     dr = DrawRobots(
-        "./all_results/fanuc/Robot_4/points_count100/noStep/Gen5000"
-        + "/replace/Hamming20/poly_traj/220606-150353"
+        "./all_results/fanuc/Robot_2/points_count75/noStep"
+        + "/Gen10000/replace/Hamming8/poly_traj/220617-031624",
+        "fanuc_2-75",
     )
+
+    # dr = DrawRobots(
+    #     "./all_results/puma/Robot_2/points_count50/noStep/"
+    #     + "Gen10000/replace/Hamming5/poly_traj/220623-003729"
+    # )
+    # dr = DrawRobots(
+    #     "./all_results/puma/Robot_2/points_count100/noStep/"
+    #     + "Gen10000/replace/Hamming10/poly_traj/220621-050842"
+    # )
+    # dr = DrawRobots(
+    #     "./all_results/fanuc/Robot_4/points_count100/noStep/Gen5000"
+    #     + "/replace/Hamming20/poly_traj/220606-150353"
+    # )
+    # dr = DrawRobots(
+    #     "./all_results/fanuc/Robot_2/points_count100/noStep/Gen10000"
+    #     + "/replace/Hamming10/poly_traj/220526-040815"
+    # )
     dr.chrom_to_png(axis=[[0, 700], [-350, 350], [-350, 350]])
     dr.png_to_gif()
 
@@ -726,5 +759,5 @@ if __name__ == "__main__":
     # draw_figure()
     # index_test()
     # draw_robot()
-    draw_robot_polygons_vs_segs()
-    # draw_route_gif()
+    # draw_robot_polygons_vs_segs()
+    draw_route_gif()
