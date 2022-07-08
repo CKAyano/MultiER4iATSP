@@ -1,0 +1,46 @@
+robot_name: "puma"
+
+robots_count: 2
+
+# interp_mode: "max_deg", "poly_traj"
+interp_mode: "poly_traj"
+
+interp_step_period: 0.05
+
+mean_motion_velocity_deg: 100
+
+# [3, 5, 10, 15]
+is_hamming_crowding:
+  - True
+  - 3
+  - "replace"
+
+is_recombine_init_chromo: True
+
+custom_initChrom: True
+
+points_range:
+  -
+    - 200
+    - 1000
+  -
+    - -450
+    - 450
+  -
+    - -400
+    - -400
+
+link_width: 600
+
+org_pos:
+  - 90
+  - -45
+  - 0
+  - 0
+  - 45
+  - 0
+
+zyx_euler_deg:
+  - 0
+  - 0
+  - 180
