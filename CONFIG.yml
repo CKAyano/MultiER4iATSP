@@ -11,7 +11,7 @@ mean_motion_velocity_deg: 100
 
 is_hamming_crowding:
   - True
-  - 40
+  - 10
   - "replace"
 
 is_recombine_init_chromo: True
@@ -23,8 +23,8 @@ points_range:
     - 100
     - 800
   -
-    - -300
-    - 300
+    - -350
+    - 350
   -
     - 50
     - 50
@@ -39,7 +39,7 @@ org_pos:
   - 90
   - 0
 
-zyx_euler:
+zyx_euler_deg:
   - 0
   - 0
-  - -3.14159265
+  - -180

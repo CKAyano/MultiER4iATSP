@@ -595,6 +595,22 @@ class ChromoCalcV3:
 
         return score_dist, totalDistance
 
+    def get_points_from_robots(self):
+        points_rb = []
+        for rb in self.robots:
+            points = np.zeros((0, 3))
+            for i in rb.robot_path:
+                idx = i - 1
+                # if i == -1:
+                #     pt = self.rc.userFK(self.config.org_pos)
+                #     pt = pt.end_effector.coordToNp()
+                #     points = np.vstack((points, pt))
+                #     continue
+                pt = np.array([self.px[idx], self.py[idx], self.pz[idx]])
+                points = np.vstack((points, pt))
+            points_rb.append(points)
+        return points_rb
+
 
 class Trajectory:
     def _traj_s(a, b, c, d, e, f, t):

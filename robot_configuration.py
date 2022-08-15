@@ -49,7 +49,7 @@ class Coord_all:
     v6: Optional[Coord] = None
 
     @property
-    def end_effector(self):
+    def end_effector(self) -> Coord:
         v_list = ["v1", "v2", "v3", "v4", "v5", "v6"]
         return [self.__dict__[v] for v in v_list if self.__dict__[v] is not None][-1]
 

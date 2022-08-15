@@ -262,16 +262,28 @@ class DrawRobots:
             plt.close()
             # plt.show()
 
-    def draw_pareto(self):
+    def draw_pareto(self, xlabel: str = None, ylabel: str = None, dpi: float = None):
         path_save = f"./ValidityFigure/{self.folder_name}"
         Path(path_save).mkdir(parents=True, exist_ok=True)
         objV = np.genfromtxt(f"{self.folderName}/ObjV.csv", delimiter=",")
         objV = IndexComparision._sort_obj_value(objV)
+        plt.figure(figsize=(4, 3))
+        if dpi:
+            plt.figure(figsize=(4, 3), dpi=dpi)
         plt.plot(objV[:, 0], objV[:, 1], "ro")
         plt.title("Pareto Front")
-        plt.xlabel(r"$T$")
-        plt.ylabel(r"$\sigma$")
-        plt.savefig(f"{path_save}/pareto.png")
+        if xlabel:
+            plt.xlabel(xlabel)
+        else:
+            plt.xlabel(r"$T$")
+        if ylabel:
+            plt.ylabel(ylabel)
+        else:
+            plt.ylabel(r"$\sigma$")
+        # if fontsize:
+        #     plt.rcParams.update({"font.size": fontsize})
+        plt.tight_layout()
+        plt.savefig(f"{path_save}/pareto.png", bbox_inches="tight")
         plt.cla()
         plt.clf()
         plt.close()
@@ -656,11 +668,16 @@ def index_test():
 def draw_figure():
     dr = DrawRobots(
         "./all_results/puma/Robot_2/points_count50/noStep/"
-        + "Gen10000/replace/Hamming5/poly_traj/220623-003729"
+        + "Gen10000/replace/Hamming5/poly_traj/220706-233141",
+        "220713-144954",
     )
+    # dr = DrawRobots(
+    #     "./all_results/puma/Robot_2/points_count50/noStep/"
+    #     + "Gen10000/replace/Hamming5/poly_traj/220623-003729"
+    # )
     # dr.draw_manuf_route(is_connect=True)
-    dr.draw_manuf_dist()
-    dr.draw_pareto()
+    # dr.draw_manuf_dist()
+    dr.draw_pareto("Manufacturing Time", "Load Balance of Each Robot", 300)
 
 
 def draw_robot():
@@ -700,64 +717,50 @@ def draw_robot_polygons_vs_segs():
 
 
 def draw_route_gif():
-    # dr = DrawRobots(
-    #     "./all_results/fanuc/Robot_2/points_count25/noStep"
-    #     + "/Gen10000/replace/Hamming3/poly_traj/220614-204206",
-    #     "fanuc_2-25",
-    # )
-    # dr = DrawRobots(
-    #     "./all_results/fanuc/Robot_2/points_count50/noStep"
-    #     + "/Gen10000/replace/Hamming5/poly_traj/220615-020536",
-    #     "fanuc_2-50",
-    # )
+
     dr = DrawRobots(
         "./all_results/fanuc/Robot_2/points_count75/noStep"
         + "/Gen10000/replace/Hamming8/poly_traj/220617-031624",
         "fanuc_2-75",
     )
 
-    # dr = DrawRobots(
-    #     "./all_results/puma/Robot_2/points_count50/noStep/"
-    #     + "Gen10000/replace/Hamming5/poly_traj/220623-003729"
-    # )
-    # dr = DrawRobots(
-    #     "./all_results/puma/Robot_2/points_count100/noStep/"
-    #     + "Gen10000/replace/Hamming10/poly_traj/220621-050842"
-    # )
-    # dr = DrawRobots(
-    #     "./all_results/fanuc/Robot_4/points_count100/noStep/Gen5000"
-    #     + "/replace/Hamming20/poly_traj/220606-150353"
-    # )
-    # dr = DrawRobots(
-    #     "./all_results/fanuc/Robot_2/points_count100/noStep/Gen10000"
-    #     + "/replace/Hamming10/poly_traj/220526-040815"
-    # )
     dr.chrom_to_png(axis=[[0, 700], [-350, 350], [-350, 350]])
     dr.png_to_gif()
 
 
+def get_robots_points_index():
+    folder_path = (
+        "./all_results/puma/Robot_2/points_count50/noStep/Gen10000/replace/Hamming5/poly_traj/220706-233141"
+    )
+    config = Config(f"{folder_path}/CONFIG.yml")
+    points = np.genfromtxt(f"{folder_path}/output_point.csv", delimiter=",",)
+    cc = ChromoCalcV3(config, points, 0, 1, [])
+    chrom_all = np.genfromtxt(f"{folder_path}/Chrom.csv", delimiter=",", dtype=int)
+
+    chrom = chrom_all[2, :]
+    scores = cc.score_step(chrom)
+    cc.set_robotsPath(chrom)
+    # for chrom in chrom_all:
+    #     scores = cc.score_step(chrom)
+    #     cc.set_robotsPath(chrom)
+    #     print(f"{scores[0]}, " f"{len(cc.robots[0].robot_path)}", f"{len(cc.robots[1].robot_path)}")
+    points_rb = cc.get_points_from_robots()
+    for pts in points_rb:
+        pts_rounded = np.round(pts, 2)
+        for i, pt in enumerate(pts_rounded):
+            print(i + 1, f"({pt[0]}, {pt[1]}, {pt[2]})")
+        print()
+    print(f"{scores[0]}\n")
+    print(f"{cc.robots[0].robot_path}")
+    print(f"{len(cc.robots[0].robot_path)}\n")
+    print(f"{cc.robots[1].robot_path}")
+    print(f"{len(cc.robots[1].robot_path)}\n")
+
+
 if __name__ == "__main__":
-
-    # try:
-    #     dr.chrom_to_png(axis=[[0, 900], [-450, 450], [-450, 450]])
-    # except Exception:
-    #     pass
-
-    # config = Config("./all_results/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/CONFIG.yml")
-    # points = np.genfromtxt(
-    #     "./all_results/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/output_point.csv",
-    #     delimiter=","
-    # )
-    # ccv3 = ChromoCalcV3(config, points, 0, 1, [])
-    # chrom = np.genfromtxt(
-    #     f"./all_results/Robot_2/noStep/Gen10000/random/Hamming10/220320-121932/Chrom.csv",
-    #     delimiter=",",
-    #     dtype="int32",
-    # )
-    # test = ccv3.interpolation_step(chrom[3, :])
-    # print()
-    # draw_figure()
+    draw_figure()
+    # get_robots_points_index()
     # index_test()
     # draw_robot()
     # draw_robot_polygons_vs_segs()
-    draw_route_gif()
+    # draw_route_gif()
