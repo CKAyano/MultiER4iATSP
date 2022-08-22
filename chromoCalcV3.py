@@ -11,12 +11,14 @@ class LeftoverPopulation:
 
 
 class CrowdingMode:
+    @staticmethod
     def mode_random(elimed_pop, insert_count):
         pop_rand = elimed_pop.copy()
         pop_rand.initChrom(insert_count)
         # pop = elimed_pop + pop_rand
         return pop_rand
 
+    @staticmethod
     def mode_replace(elimed_pop, insert_count):
         pop_leftover = LeftoverPopulation.leftover_population
         chooseflags = CrowdingMode._rand_bool(insert_count, pop_leftover.sizes)
@@ -24,6 +26,7 @@ class CrowdingMode:
         pop = elimed_pop + pop_choose
         return pop
 
+    @staticmethod
     def _rand_bool(true_count, length):
         chooseflags = np.full((length,), False)
         idx = np.arange(length)
@@ -115,7 +118,7 @@ class ChromoCalcV3:
             score_dist = np.ones((pop_need_added.sizes, 1))
             score_unif = np.ones((pop_need_added.sizes, 1))
             for chromo_id in range(pop_need_added.sizes):
-                score_all = self.score_step(pop_elimed.Chrom[chromo_id, :])
+                score_all = self.score_step(pop_need_added.Chrom[chromo_id, :])
                 score_dist[chromo_id] = score_all[0]
                 score_unif[chromo_id] = score_all[1]
             pop_need_added.CV = np.hstack((score_dist - 1000000, score_unif - 10000))
@@ -123,12 +126,7 @@ class ChromoCalcV3:
             pop_after = pop_elimed + pop_need_added
 
         elif self.config.hamming_crowding_mode == "reverse":
-            try:
-                print("suspended")
-                raise RuntimeError("This mode is suspended.")
-            except RuntimeError as e:
-                print(repr(e))
-                raise
+            raise RuntimeError("This mode is suspended.")
 
         elif self.config.hamming_crowding_mode == "replace":
             pop_added = CrowdingMode.mode_replace(pop_elimed, insert_count)
